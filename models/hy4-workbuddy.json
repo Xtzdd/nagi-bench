@@ -1,0 +1,17 @@
+{
+  "label": "Hy4",
+  "vendor": "Tencent",
+  "harness": "WorkBuddy",
+  "effort": "Default",
+  "artifactDir": "hy4/workbuddy-default",
+  "order": 60,
+  "runs": {
+    "skeleton-watch": {
+      "note": {
+        "zh": "在 WorkBuddy（编码智能体 Harness）中以 Hy4（Default 档）一次生成，全程未调用任何 skill、插件或 MCP，未使用自定义系统提示词。生成后仅做三处非功能性调整：默认机位由 (6,9,74) 拉远至 (7,11,101)、曝光由 1.06 提升至 1.16（原机位下主体溢出画面），PMREM 模糊半径由 0.045 降至 0.03 以消除控制台告警。已通过本地无头 Chromium 冒烟测试确认可运行。",
+        "en": "One-shot by Hy4 (Default effort) in the WorkBuddy coding-agent harness, with no skill, plugin or MCP server invoked and no custom system prompt. Three non-functional adjustments after generation: the default camera was pulled back from (6,9,74) to (7,11,101) and exposure raised from 1.06 to 1.16 because the subject overflowed the frame, and the PMREM blur radius was lowered from 0.045 to 0.03 to silence a console warning. Verified runnable with a local headless-Chromium smoke test."
+      },
+      "contributor": "Xtzdd"
+    }
+  }
+}
