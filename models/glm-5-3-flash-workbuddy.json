@@ -1,0 +1,25 @@
+{
+  "label": "GLM-5.3 Flash",
+  "vendor": "Zhipu AI",
+  "harness": "WorkBuddy",
+  "effort": "Default",
+  "artifactDir": "glm-5-3-flash/workbuddy",
+  "runs": {
+    "pelican-cycling": {
+      "evaluation": "showcase",
+      "contributor": "Xtzdd",
+      "note": {
+        "zh": "由 GLM-5.3 Flash 驱动的 WorkBuddy 智能体环境一次生成，未修改。WorkBuddy 是带内置系统提示与文件读写工具的 Agent 产品，并非开箱即用的裸 Harness，因此按仓库规则标记为 showcase：本次产出测量的是该工具链形态，不可与其他标准条目进行盲评对比。产出按仓库标准中文提示词一次写成，匿名性已检查，无身份信息。",
+        "en": "One-shot by GLM-5.3 Flash running inside the WorkBuddy agent environment, unmodified. WorkBuddy is an agent product with a built-in system prompt and file tools, not a bare out-of-the-box harness, so per repository rules this run is marked as a showcase: it measures this tooling setup and is not comparable in blind Arena battles with standard entries. Generated in a single pass from the repository's canonical Chinese prompt; checked for anonymity, no identity leaks."
+      }
+    },
+    "skeleton-watch": {
+      "evaluation": "showcase",
+      "contributor": "Xtzdd",
+      "note": {
+        "zh": "由 GLM-5.3 Flash 驱动的 WorkBuddy 智能体环境一次生成，未修改。WorkBuddy 是带内置系统提示与文件读写工具的 Agent 产品，并非开箱即用的裸 Harness，因此按仓库规则标记为 showcase：本次产出测量的是该工具链形态，不可与其他标准条目进行盲评对比。单 HTML 文件按仓库标准中文提示词一次写成，个别交互细节可能存在瑕疵，按仓库规则保留原样不作修复。",
+        "en": "One-shot by GLM-5.3 Flash running inside the WorkBuddy agent environment, unmodified. WorkBuddy is an agent product with a built-in system prompt and file tools, not a bare out-of-the-box harness, so per repository rules this run is marked as a showcase: it measures this tooling setup and is not comparable in blind Arena battles with standard entries. The single HTML file was written in one pass from the repository's canonical Chinese prompt; minor interaction imperfections are left as-is per repository policy."
+      }
+    }
+  }
+}
