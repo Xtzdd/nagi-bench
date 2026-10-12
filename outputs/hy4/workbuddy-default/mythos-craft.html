@@ -1,0 +1,1880 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mythos Craft</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#8ec5e8;
+    font-family:"Segoe UI",-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:#fff;user-select:none;-webkit-user-select:none}
+  canvas{display:block}
+
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+  #cross{position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px 0 0 -10px;
+    mix-blend-mode:difference;opacity:.85}
+  #cross:before,#cross:after{content:"";position:absolute;background:#fff}
+  #cross:before{left:9px;top:0;width:2px;height:20px}
+  #cross:after{top:9px;left:0;height:2px;width:20px}
+
+  #bar{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:flex;gap:5px}
+  .slot{width:54px;height:54px;border:2px solid rgba(255,255,255,.35);background:rgba(0,0,0,.42);
+    border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+  .slot.on{border-color:#fff;background:rgba(255,255,255,.20);box-shadow:0 0 14px rgba(255,255,255,.45)}
+  .slot canvas{image-rendering:pixelated;width:34px;height:34px}
+  .slot .k{position:absolute;top:1px;left:3px;font-size:9px;color:rgba(255,255,255,.65)}
+  .slot .n{font-size:8.5px;letter-spacing:.02em;color:rgba(255,255,255,.85);margin-top:1px;
+    text-shadow:0 1px 2px #000;white-space:nowrap}
+
+  #info{position:absolute;left:14px;top:12px;font-size:11.5px;line-height:1.85;
+    text-shadow:0 1px 3px rgba(0,0,0,.85);letter-spacing:.02em}
+  #info b{color:#ffe08a;font-weight:600}
+
+  #help{position:absolute;right:14px;top:12px;font-size:11px;line-height:1.8;text-align:right;
+    text-shadow:0 1px 3px rgba(0,0,0,.85);color:rgba(255,255,255,.9)}
+  #help .hd{color:#ffe08a;font-weight:600;margin-bottom:3px}
+
+  #loading{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(180deg,#3f7fb8 0%,#8ec5e8 55%,#cfe6f2 100%);transition:opacity .5s}
+  #loading.gone{opacity:0;pointer-events:none}
+  #loading div{text-align:center}
+  #loading h1{font-size:26px;letter-spacing:.4em;font-weight:600;text-shadow:0 2px 10px rgba(0,0,0,.4)}
+  #loading p{margin-top:14px;font-size:12px;letter-spacing:.16em;color:rgba(255,255,255,.85)}
+  #loading .err{margin-top:18px;font-size:12px;color:#ffd7d7;max-width:520px;line-height:1.7}
+
+  #start{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+    background:rgba(6,14,24,.62);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);cursor:pointer}
+  #start.gone{display:none}
+  #start .box{text-align:center;padding:38px 52px;border:1px solid rgba(255,255,255,.22);
+    border-radius:5px;background:rgba(10,18,30,.55)}
+  #start h2{font-size:21px;letter-spacing:.24em;font-weight:600}
+  #start p{margin-top:16px;font-size:12.5px;line-height:2.1;color:rgba(255,255,255,.86)}
+  #start .go{margin-top:20px;font-size:12px;letter-spacing:.22em;color:#ffe08a}
+  #start .go{animation:pulse 1.9s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
+</style>
+</head>
+<body>
+
+<div id="loading"><div>
+  <h1>MYTHOS CRAFT</h1>
+  <p id="lmsg">正在塑造世界</p>
+  <div class="err" id="lerr"></div>
+</div></div>
+
+<div id="start"><div class="box">
+  <h2>MYTHOS CRAFT</h2>
+  <p>
+    WASD 移动 &middot; 空格跳跃 &middot; Shift 疾行 &middot; 鼠标环视<br>
+    左键破坏方块 &middot; 右键放置方块 &middot; 滚轮 / 数字键切换<br>
+    连按两次空格切换飞行 &middot; F3 坐标 &middot; - / = 视距
+  </p>
+  <div class="go">点击任意位置开始</div>
+</div></div>
+
+<div id="hud">
+  <div id="cross"></div>
+  <div id="info"></div>
+  <div id="help">
+    <div class="hd">MYTHOS CRAFT</div>
+    WASD 移动 &middot; Space 跳 / 双击飞行<br>
+    Shift 疾行 &middot; 左键破坏 &middot; 右键放置<br>
+    1-9 / 滚轮 选方块 &middot; Esc 释放鼠标
+  </div>
+  <div id="bar"></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ============================================================
+   1. Constants
+   ============================================================ */
+const TAU = Math.PI * 2;
+const CHUNK = 16;
+const WORLD_H = 72;
+const SEA = 23;
+const SEED = 20260712;
+
+const AIR = 0, STONE = 1, DIRT = 2, GRASS = 3, SAND = 4, WATER = 5, LOG = 6,
+      LEAVES = 7, COBBLE = 8, PLANKS = 9, GLOW = 10, OBSIDIAN = 11, SNOW = 12,
+      GOLD_ORE = 13, MARBLE = 14, MOSSY = 15, CRYSTAL = 16, DARK = 17, BRICK = 18,
+      GOLD = 19, SANDSTONE = 20, MUSHROOM = 21, STEM = 22, BONE = 23, ICE = 24, LAMP = 25;
+
+const T_STONE = 0, T_DIRT = 1, T_GTOP = 2, T_GSIDE = 3, T_SAND = 4, T_WATER = 5,
+      T_LOGSIDE = 6, T_LOGTOP = 7, T_LEAVES = 8, T_COBBLE = 9, T_PLANKS = 10,
+      T_GLOW = 11, T_OBSIDIAN = 12, T_SNOW = 13, T_GOLDORE = 14, T_MARBLE = 15,
+      T_MOSSY = 16, T_CRYSTAL = 17, T_DARK = 18, T_BRICK = 19, T_GOLD = 20,
+      T_SANDSTONE = 21, T_MUSHROOM = 22, T_STEM = 23, T_BONE = 24, T_ICE = 25, T_LAMP = 26;
+
+const T = t => ({ top: t, side: t, bottom: t });
+
+const BLOCKS = [];
+BLOCKS[AIR]       = { name: 'Air',       tiles: T(T_STONE),    solid: false, opaque: false, liquid: false };
+BLOCKS[STONE]     = { name: '石头',      tiles: T(T_STONE),    solid: true,  opaque: true,  liquid: false };
+BLOCKS[DIRT]      = { name: '泥土',      tiles: T(T_DIRT),     solid: true,  opaque: true,  liquid: false };
+BLOCKS[GRASS]     = { name: '草地',      tiles: { top: T_GTOP, side: T_GSIDE, bottom: T_DIRT }, solid: true, opaque: true, liquid: false };
+BLOCKS[SAND]      = { name: '沙子',      tiles: T(T_SAND),     solid: true,  opaque: true,  liquid: false };
+BLOCKS[WATER]     = { name: '水',        tiles: T(T_WATER),    solid: false, opaque: false, liquid: true };
+BLOCKS[LOG]       = { name: '原木',      tiles: { top: T_LOGTOP, side: T_LOGSIDE, bottom: T_LOGTOP }, solid: true, opaque: true, liquid: false };
+BLOCKS[LEAVES]    = { name: '树叶',      tiles: T(T_LEAVES),   solid: true,  opaque: true,  liquid: false };
+BLOCKS[COBBLE]    = { name: '圆石',      tiles: T(T_COBBLE),   solid: true,  opaque: true,  liquid: false };
+BLOCKS[PLANKS]    = { name: '木板',      tiles: T(T_PLANKS),   solid: true,  opaque: true,  liquid: false };
+BLOCKS[GLOW]      = { name: '萤石',      tiles: T(T_GLOW),     solid: true,  opaque: true,  liquid: false };
+BLOCKS[OBSIDIAN]  = { name: '黑曜石',    tiles: T(T_OBSIDIAN), solid: true,  opaque: true,  liquid: false };
+BLOCKS[SNOW]      = { name: '雪',        tiles: T(T_SNOW),     solid: true,  opaque: true,  liquid: false };
+BLOCKS[GOLD_ORE]  = { name: '金矿石',    tiles: T(T_GOLDORE),  solid: true,  opaque: true,  liquid: false };
+BLOCKS[MARBLE]    = { name: '大理石',    tiles: T(T_MARBLE),   solid: true,  opaque: true,  liquid: false };
+BLOCKS[MOSSY]     = { name: '苔石',      tiles: T(T_MOSSY),    solid: true,  opaque: true,  liquid: false };
+BLOCKS[CRYSTAL]   = { name: '水晶',      tiles: T(T_CRYSTAL),  solid: true,  opaque: true,  liquid: false };
+BLOCKS[DARK]      = { name: '幽石',      tiles: T(T_DARK),     solid: true,  opaque: true,  liquid: false };
+BLOCKS[BRICK]     = { name: '砖块',      tiles: T(T_BRICK),    solid: true,  opaque: true,  liquid: false };
+BLOCKS[GOLD]      = { name: '金块',      tiles: T(T_GOLD),     solid: true,  opaque: true,  liquid: false };
+BLOCKS[SANDSTONE] = { name: '砂岩',      tiles: T(T_SANDSTONE),solid: true,  opaque: true,  liquid: false };
+BLOCKS[MUSHROOM]  = { name: '菌盖',      tiles: T(T_MUSHROOM), solid: true,  opaque: true,  liquid: false };
+BLOCKS[STEM]      = { name: '菌柄',      tiles: T(T_STEM),     solid: true,  opaque: true,  liquid: false };
+BLOCKS[BONE]      = { name: '骸骨',      tiles: T(T_BONE),     solid: true,  opaque: true,  liquid: false };
+BLOCKS[ICE]       = { name: '寒冰',      tiles: T(T_ICE),      solid: true,  opaque: true,  liquid: false };
+BLOCKS[LAMP]      = { name: '符文灯',    tiles: T(T_LAMP),     solid: true,  opaque: true,  liquid: false };
+
+const HOTBAR = [GRASS, DIRT, STONE, COBBLE, PLANKS, LOG, LEAVES, GLOW, MARBLE,
+                CRYSTAL, BRICK, GOLD, SANDSTONE, OBSIDIAN, SAND];
+
+/* ============================================================
+   2. Noise
+   ============================================================ */
+function makeRng(seed) {
+  let s = (seed | 0) || 1;
+  return () => {
+    s ^= s << 13; s ^= s >>> 17; s ^= s << 5; s |= 0;
+    return ((s >>> 0) % 1000000) / 1000000;
+  };
+}
+
+const perm = new Uint8Array(512);
+{
+  const rnd = makeRng(SEED);
+  const p0 = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) p0[i] = i;
+  for (let i = 255; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    const t = p0[i]; p0[i] = p0[j]; p0[j] = t;
+  }
+  for (let i = 0; i < 512; i++) perm[i] = p0[i & 255];
+}
+const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+const lerp = (a, b, t) => a + t * (b - a);
+
+function grad2(h, x, y) {
+  switch (h & 7) {
+    case 0: return x + y; case 1: return -x + y; case 2: return x - y; case 3: return -x - y;
+    case 4: return x; case 5: return -x; case 6: return y; default: return -y;
+  }
+}
+function grad3(h, x, y, z) {
+  switch (h & 15) {
+    case 0: return x + y; case 1: return -x + y; case 2: return x - y; case 3: return -x - y;
+    case 4: return x + z; case 5: return -x + z; case 6: return x - z; case 7: return -x - z;
+    case 8: return y + z; case 9: return -y + z; case 10: return y - z; case 11: return -y - z;
+    case 12: return x + y; case 13: return -y + z; case 14: return -x + y; default: return -y - z;
+  }
+}
+function noise2(x, y) {
+  const fx = Math.floor(x), fy = Math.floor(y);
+  const X = fx & 255, Y = fy & 255;
+  const xf = x - fx, yf = y - fy;
+  const u = fade(xf), v = fade(yf);
+  const aa = perm[perm[X] + Y], ab = perm[perm[X] + Y + 1];
+  const ba = perm[perm[X + 1] + Y], bb = perm[perm[X + 1] + Y + 1];
+  const x1 = lerp(grad2(aa, xf, yf), grad2(ba, xf - 1, yf), u);
+  const x2 = lerp(grad2(ab, xf, yf - 1), grad2(bb, xf - 1, yf - 1), u);
+  return lerp(x1, x2, v);
+}
+function noise3(x, y, z) {
+  const fx = Math.floor(x), fy = Math.floor(y), fz = Math.floor(z);
+  const X = fx & 255, Y = fy & 255, Z = fz & 255;
+  const xf = x - fx, yf = y - fy, zf = z - fz;
+  const u = fade(xf), v = fade(yf), w = fade(zf);
+  const A = perm[X] + Y, B = perm[X + 1] + Y;
+  const AA = perm[A] + Z, AB = perm[A + 1] + Z;
+  const BA = perm[B] + Z, BB = perm[B + 1] + Z;
+  const x1 = lerp(grad3(perm[AA], xf, yf - 1, zf - 1), grad3(perm[BA], xf - 1, yf - 1, zf - 1), u);
+  const x2 = lerp(grad3(perm[AB], xf, yf - 1, zf), grad3(perm[BB], xf - 1, yf - 1, zf), u);
+  const y1 = lerp(x1, x2, v);
+  const x3 = lerp(grad3(perm[AA + 1], xf, yf, zf - 1), grad3(perm[BA + 1], xf - 1, yf, zf - 1), u);
+  const x4 = lerp(grad3(perm[AB + 1], xf, yf, zf), grad3(perm[BB + 1], xf - 1, yf, zf), u);
+  const y2 = lerp(x3, x4, v);
+  return lerp(y1, y2, w);
+}
+function fbm2(x, y, oct, lac = 2, gain = 0.5) {
+  let a = 1, f = 1, s = 0, n = 0;
+  for (let i = 0; i < oct; i++) { s += noise2(x * f, y * f) * a; n += a; a *= gain; f *= lac; }
+  return s / n;
+}
+
+function hash3(x, y, z) {
+  let h = (x * 374761393 + y * 668265263 + z * 2147483647) | 0;
+  h = (h ^ (h >>> 13)) * 1274126177;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+function hash2i(x, z, salt) {
+  let h = (x * 73856093) ^ (z * 19349663) ^ (salt * 83492791);
+  h = (h ^ (h >>> 13)) * 1274126177;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/* ============================================================
+   3. Terrain shaping
+   ============================================================ */
+const heightCache = new Map();
+function surfaceHeight(x, z) {
+  const k = x + z * 100000;
+  const c = heightCache.get(k);
+  if (c !== undefined) return c;
+  const e = fbm2(x / 190, z / 190, 5);
+  const ridge = Math.pow(Math.max(0, e * 0.5 + 0.5), 2.2);
+  const detail = fbm2(x / 46 + 400, z / 46 - 400, 3) * 2.2;
+  let h = SEA + 1 + e * 9 + ridge * 30 + detail;
+  const v = Math.max(2, Math.min(WORLD_H - 8, Math.round(h)));
+  if (heightCache.size < 180000) heightCache.set(k, v);
+  return v;
+}
+function biomeAt(x, z) {
+  const t = fbm2(x / 320 + 90, z / 320 - 60, 2);
+  const m = fbm2(x / 240 - 210, z / 240 + 130, 2);
+  if (t > 0.34) return 'desert';
+  if (t < -0.40) return 'snow';
+  if (m > 0.28) return 'forest';
+  return 'plains';
+}
+
+/* ============================================================
+   4. Procedural texture atlas
+   ============================================================ */
+const TILE = 16, ATLAS_N = 8, ATLAS_PX = TILE * ATLAS_N;
+
+function buildAtlas() {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = ATLAS_PX;
+  const g = cv.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.fillStyle = '#ff00ff'; g.fillRect(0, 0, ATLAS_PX, ATLAS_PX);
+
+  const trnd = makeRng(99173);
+  const px = (t, x, y, r, gg, b, a = 1) => {
+    const col = t % ATLAS_N, row = (t / ATLAS_N) | 0;
+    g.fillStyle = `rgba(${r | 0},${gg | 0},${b | 0},${a})`;
+    g.fillRect(col * TILE + x, row * TILE + y, 1, 1);
+  };
+  const shift = (c, d) => Math.max(0, Math.min(255, c + d));
+
+  function speckle(t, base, amp, extra) {
+    const [r, gg, b] = base;
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      const d = (trnd() - 0.5) * amp;
+      px(t, x, y, shift(r, d), shift(gg, d), shift(b, d));
+    }
+    if (extra) extra(t);
+  }
+
+  // 0 stone
+  speckle(T_STONE, [128, 128, 130], 34, t => {
+    for (let i = 0; i < 22; i++) {
+      const x = (trnd() * TILE) | 0, y = (trnd() * TILE) | 0;
+      px(t, x, y, 96, 96, 100);
+    }
+    for (let i = 0; i < 10; i++) {
+      const x = (trnd() * TILE) | 0, y = (trnd() * TILE) | 0;
+      px(t, x, y, 168, 168, 172);
+    }
+    for (let i = 0; i < 3; i++) {
+      let x = 2 + trnd() * 12, y = 2 + trnd() * 12;
+      for (let k = 0; k < 7; k++) { px(t, x | 0, y | 0, 88, 88, 92); x += trnd() * 1.6 - .6; y += trnd() * 1.6 - .8; }
+    }
+  });
+
+  // 1 dirt
+  speckle(T_DIRT, [134, 96, 62], 30, t => {
+    for (let i = 0; i < 30; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 108, 76, 48);
+    for (let i = 0; i < 16; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 160, 120, 84);
+  });
+
+  // 2 grass top
+  speckle(T_GTOP, [96, 158, 62], 40, t => {
+    for (let i = 0; i < 40; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 74, 128, 46);
+    for (let i = 0; i < 22; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 126, 190, 82);
+  });
+
+  // 3 grass side
+  (t => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      if (y < 4) {
+        const d = (trnd() - .5) * 40;
+        const over = (y === 3 && trnd() < .45) ? 0 : 1;
+        if (over) px(t, x, y, shift(96, d), shift(158, d), shift(62, d));
+        else px(t, x, y, shift(134, d), shift(96, d), shift(62, d));
+      } else {
+        const d = (trnd() - .5) * 30;
+        px(t, x, y, shift(134, d), shift(96, d), shift(62, d));
+      }
+    }
+    for (let i = 0; i < 12; i++) px(t, (trnd() * TILE) | 0, 4 + ((trnd() * 11) | 0), 106, 74, 46);
+  })(T_GSIDE);
+
+  // 4 sand
+  speckle(T_SAND, [222, 205, 150], 26, t => {
+    for (let i = 0; i < 26; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 196, 178, 124);
+  });
+
+  // 5 water
+  (t => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      const w = Math.sin((x + y * .4) * .9) * 12 + Math.sin(y * 1.7) * 8;
+      px(t, x, y, 46 + w, 116 + w * 1.2, 186 + w * .6);
+    }
+    for (let i = 0; i < 14; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 150, 200, 235);
+  })(T_WATER);
+
+  // 6 log side (bark)
+  (t => {
+    for (let x = 0; x < TILE; x++) {
+      const streak = (trnd() - .5) * 30 + ((x % 4 === 0) ? -22 : 0);
+      for (let y = 0; y < TILE; y++) {
+        const d = streak + (trnd() - .5) * 16;
+        px(t, x, y, shift(108, d), shift(78, d * .8), shift(42, d * .6));
+      }
+    }
+    for (let i = 0; i < 3; i++) {
+      const x = (trnd() * TILE) | 0;
+      for (let y = 0; y < TILE; y++) if (trnd() < .55) px(t, x, y, 74, 52, 28);
+    }
+  })(T_LOGSIDE);
+
+  // 7 log top (rings)
+  (t => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      const dx = x - 7.5, dy = y - 7.5, r = Math.sqrt(dx * dx + dy * dy);
+      const ring = Math.sin(r * 2.4) * 16;
+      px(t, x, y, shift(168, ring), shift(128, ring), shift(78, ring * .8));
+    }
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      const dx = x - 7.5, dy = y - 7.5;
+      if (Math.sqrt(dx * dx + dy * dy) > 7.6) px(t, x, y, 104, 76, 42);
+    }
+  })(T_LOGTOP);
+
+  // 8 leaves
+  speckle(T_LEAVES, [58, 122, 44], 54, t => {
+    for (let i = 0; i < 60; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 34, 82, 28);
+    for (let i = 0; i < 26; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 96, 158, 62);
+  });
+
+  // 9 cobble
+  (t => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) px(t, x, y, 74, 74, 78);
+    for (let i = 0; i < 12; i++) {
+      const cx = trnd() * TILE, cy = trnd() * TILE, r = 2 + trnd() * 2.6;
+      const base = 110 + trnd() * 55;
+      for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+        const dx = x - cx, dy = y - cy;
+        if (dx * dx + dy * dy < r * r) {
+          const d = (trnd() - .5) * 26;
+          px(t, x, y, shift(base, d), shift(base, d), shift(base + 4, d));
+        }
+      }
+    }
+  })(T_COBBLE);
+
+  // 10 planks
+  (t => {
+    for (let y = 0; y < TILE; y++) {
+      const band = (y % 5 === 0) ? -34 : 0;
+      const base = (y / 5 | 0) % 2 === 0 ? 0 : -8;
+      for (let x = 0; x < TILE; x++) {
+        const d = band + base + (trnd() - .5) * 14;
+        px(t, x, y, shift(176, d), shift(132, d), shift(78, d));
+      }
+    }
+    for (let i = 0; i < 3; i++) {
+      const x = (trnd() * TILE) | 0;
+      for (let y = 0; y < TILE; y++) px(t, x, y, 126, 92, 52);
+    }
+  })(T_PLANKS);
+
+  // 11 glowstone
+  (t => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      const n = fbm2(x * .5, y * .5, 3) * 30 + 200;
+      px(t, x, y, n, n * .84, n * .42);
+    }
+    for (let i = 0; i < 18; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 255, 246, 190);
+  })(T_GLOW);
+
+  // 12 obsidian
+  speckle(T_OBSIDIAN, [42, 34, 62], 26, t => {
+    for (let i = 0; i < 18; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 96, 76, 148);
+    for (let i = 0; i < 8; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 16, 12, 24);
+  });
+
+  // 13 snow
+  speckle(T_SNOW, [238, 244, 252], 16, t => {
+    for (let i = 0; i < 20; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 208, 220, 238);
+  });
+
+  // 14 gold ore
+  speckle(T_GOLDORE, [128, 128, 130], 30, t => {
+    for (let i = 0; i < 7; i++) {
+      const cx = 2 + trnd() * 12, cy = 2 + trnd() * 12;
+      for (let k = 0; k < 5; k++) {
+        const x = (cx + trnd() * 2.6) | 0, y = (cy + trnd() * 2.6) | 0;
+        if (x < 16 && y < 16) px(t, x, y, 240, 196, 62);
+      }
+    }
+  });
+
+  // 15 marble
+  (t => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      const v = fbm2(x * .34, y * .34, 3);
+      const d = v * 22;
+      px(t, x, y, shift(238, d - 8), shift(238, d - 6), shift(234, d));
+    }
+    for (let i = 0; i < 3; i++) {
+      let x = trnd() * 16, y = trnd() * 16;
+      for (let k = 0; k < 20; k++) {
+        px(t, x | 0, y | 0, 196, 198, 206);
+        x += trnd() * 1.4 - .7; y += trnd() * 1.4 - .5;
+      }
+    }
+  })(T_MARBLE);
+
+  // 16 mossy cobble
+  (t => {
+    for (let i = 0; i < 12; i++) {
+      const cx = trnd() * TILE, cy = trnd() * TILE, r = 2 + trnd() * 2.6;
+      const base = 108 + trnd() * 50;
+      for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+        const dx = x - cx, dy = y - cy;
+        if (dx * dx + dy * dy < r * r) px(t, x, y, base, base, base + 4);
+      }
+    }
+    for (let i = 0; i < 90; i++) {
+      const x = (trnd() * TILE) | 0, y = (trnd() * TILE) | 0;
+      px(t, x, y, 62 + trnd() * 40, 118 + trnd() * 40, 48 + trnd() * 26);
+    }
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      if (trnd() < .25) px(t, x, y, 74, 74, 78);
+    }
+  })(T_MOSSY);
+
+  // 17 crystal
+  (t => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      const v = fbm2(x * .42 + 30, y * .42 - 12, 3);
+      const d = v * 60;
+      px(t, x, y, shift(96, d * .5), shift(200, d), shift(238, d * .6));
+    }
+    for (let i = 0; i < 4; i++) {
+      let x = trnd() * 16, y = trnd() * 16;
+      for (let k = 0; k < 18; k++) { px(t, x | 0, y | 0, 210, 250, 255); x += trnd() * 1.6 - .8; y += trnd() * 1.6 - .8; }
+    }
+  })(T_CRYSTAL);
+
+  // 18 darkstone
+  speckle(T_DARK, [58, 62, 76], 24, t => {
+    for (let i = 0; i < 16; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 84, 90, 110);
+    for (let i = 0; i < 12; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 34, 36, 46);
+  });
+
+  // 19 brick
+  (t => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) px(t, x, y, 168, 84, 68);
+    for (let row = 0; row < 4; row++) {
+      const yo = row * 4;
+      for (let x = 0; x < TILE; x++) px(t, x, yo, 132, 128, 124);
+      const off = (row % 2) ? 4 : 8;
+      for (let y = yo; y < yo + 4; y++) px(t, (off + row * 3) % 16, y, 132, 128, 124);
+    }
+    for (let i = 0; i < 40; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 146, 70, 56);
+  })(T_BRICK);
+
+  // 20 gold
+  (t => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      const edge = (x === 0 || y === 0 || x === 15 || y === 15);
+      const d = edge ? -46 : (trnd() - .5) * 18;
+      px(t, x, y, shift(246, d), shift(202, d), shift(66, d * .7));
+    }
+    for (let i = 0; i < 18; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 255, 236, 140);
+  })(T_GOLD);
+
+  // 21 sandstone
+  (t => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      const band = (y % 6 === 0) ? -22 : 0;
+      const d = band + (trnd() - .5) * 12;
+      px(t, x, y, shift(214, d), shift(198, d), shift(146, d));
+    }
+    for (let i = 0; i < 20; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 190, 172, 122);
+  })(T_SANDSTONE);
+
+  // 22 mushroom cap
+  speckle(T_MUSHROOM, [188, 62, 52], 34, t => {
+    for (let i = 0; i < 16; i++) {
+      const cx = 1 + trnd() * 14, cy = 1 + trnd() * 14, r = 1 + trnd() * 1.4;
+      for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+        const dx = x - cx, dy = y - cy;
+        if (dx * dx + dy * dy < r * r) px(t, x, y, 244, 238, 224);
+      }
+    }
+    for (let i = 0; i < 20; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 142, 40, 34);
+  });
+
+  // 23 mushroom stem
+  speckle(T_STEM, [226, 218, 196], 22, t => {
+    for (let i = 0; i < 22; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 200, 190, 168);
+  });
+
+  // 24 bone
+  speckle(T_BONE, [226, 222, 200], 20, t => {
+    for (let i = 0; i < 18; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 190, 184, 158);
+    for (let i = 0; i < 8; i++) px(t, (trnd() * TILE) | 0, (trnd() * TILE) | 0, 250, 248, 236);
+  });
+
+  // 25 ice
+  (t => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      const v = fbm2(x * .4 + 7, y * .4 + 3, 3) * 26;
+      px(t, x, y, shift(158, v), shift(212, v), shift(238, v));
+    }
+    for (let i = 0; i < 3; i++) {
+      let x = trnd() * 16, y = trnd() * 16;
+      for (let k = 0; k < 14; k++) { px(t, x | 0, y | 0, 226, 246, 255); x += trnd() * 1.5 - .75; y += trnd() * 1.5 - .75; }
+    }
+  })(T_ICE);
+
+  // 26 rune lamp
+  (t => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      const dx = x - 7.5, dy = y - 7.5;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      if (r < 6.2) px(t, x, y, 250, 208, 120);
+      else px(t, x, y, 74, 78, 96);
+    }
+    const runes = [[3, 4], [11, 4], [3, 11], [11, 11], [7, 7]];
+    for (const [x, y] of runes) px(t, x, y, 255, 250, 210);
+    for (const [x, y] of runes) { px(t, x + 1, y, 255, 240, 180); px(t, x, y + 1, 255, 240, 180); }
+  })(T_LAMP);
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return { tex, canvas: cv };
+}
+
+/* ============================================================
+   5. Chunk data + terrain generation
+   ============================================================ */
+const idxLocal = (x, y, z) => x + z * CHUNK + y * CHUNK * CHUNK;
+const chunks = new Map();
+const key2 = (cx, cz) => cx + ',' + cz;
+
+function ensureData(cx, cz) {
+  const k = key2(cx, cz);
+  let c = chunks.get(k);
+  if (c && c.data) return c;
+  if (!c) { c = { cx, cz, data: null }; chunks.set(k, c); }
+  c.data = generateChunk(cx, cz);
+  return c;
+}
+
+function generateChunk(cx, cz) {
+  const d = new Uint8Array(CHUNK * CHUNK * WORLD_H);
+  const bx = cx * CHUNK, bz = cz * CHUNK;
+
+  for (let x = 0; x < CHUNK; x++) {
+    for (let z = 0; z < CHUNK; z++) {
+      const wx = bx + x, wz = bz + z;
+      const h = surfaceHeight(wx, wz);
+      const biome = biomeAt(wx, wz);
+      const beach = h <= SEA + 1;
+      for (let y = 0; y <= h; y++) {
+        let id;
+        if (y === h) {
+          if (beach) id = SAND;
+          else if (biome === 'snow') id = (h > SEA + 20) ? SNOW : SNOW;
+          else if (biome === 'desert') id = SAND;
+          else id = GRASS;
+        } else if (y > h - 4) {
+          id = (beach || biome === 'desert') ? SAND : DIRT;
+        } else {
+          id = STONE;
+          const r = hash3(wx, y, wz);
+          if (y < 16 && r > 0.9915) id = GOLD_ORE;
+          else if (y < 30 && r > 0.986) id = GOLD_ORE;
+          else if (y < 44 && r > 0.978) id = COBBLE;
+        }
+        d[idxLocal(x, y, z)] = id;
+      }
+      if (h < SEA) {
+        for (let y = h + 1; y <= SEA; y++) d[idxLocal(x, y, z)] = WATER;
+      }
+      // frozen surface
+      if (biome === 'snow' && h > SEA && d[idxLocal(x, h, z)] === SNOW) {
+        d[idxLocal(x, h, z)] = SNOW;
+      }
+    }
+  }
+
+  // caves
+  const caveTop = 46;
+  for (let y = 1; y < caveTop; y++) {
+    for (let z = 0; z < CHUNK; z++) {
+      for (let x = 0; x < CHUNK; x++) {
+        const i = idxLocal(x, y, z);
+        const id = d[i];
+        if (id !== STONE && id !== DIRT) continue;
+        const wx = bx + x, wz = bz + z;
+        const n = noise3(wx * 0.042, y * 0.062, wz * 0.042)
+                + noise3(wx * 0.09 + 100, y * 0.11 + 50, wz * 0.09 - 70) * 0.45;
+        if (n > 0.62) d[i] = AIR;
+      }
+    }
+  }
+
+  // stamps (trees + structures + world tree)
+  stampAll(d, cx, cz);
+  return d;
+}
+
+function getBlockWorld(x, y, z) {
+  if (y < 0 || y >= WORLD_H) return AIR;
+  const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
+  const lx = x - cx * CHUNK, lz = z - cz * CHUNK;
+  const c = chunks.get(key2(cx, cz));
+  if (!c || !c.data) return AIR;
+  return c.data[idxLocal(lx, y, lz)];
+}
+
+/* ============================================================
+   6. Structure builders
+   ============================================================ */
+function mkPutter(d, cx, cz) {
+  const bx = cx * CHUNK, bz = cz * CHUNK;
+  return (x, y, z, id, force) => {
+    if (y < 0 || y >= WORLD_H) return;
+    const lx = x - bx, lz = z - bz;
+    if (lx < 0 || lx >= CHUNK || lz < 0 || lz >= CHUNK) return;
+    const i = idxLocal(lx, y, lz);
+    if (!force && d[i] !== AIR && !BLOCKS[d[i]].liquid) return;
+    d[i] = id;
+  };
+}
+function fill(put, x0, y0, z0, x1, y1, z1, id) {
+  for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++)
+    for (let z = Math.min(z0, z1); z <= Math.max(z0, z1); z++)
+      for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) put(x, y, z, id, true);
+}
+function flatten(put, x0, z0, x1, z1, y, topId, subId) {
+  for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) {
+    for (let yy = y + 1; yy < y + 24; yy++) put(x, yy, z, AIR, true);
+    put(x, y, z, topId, true);
+    for (let k = 1; k <= 3; k++) put(x, y - k, z, subId, true);
+  }
+}
+
+function bGreekTemple(put, ox, oz) {
+  const y = surfaceHeight(ox, oz);
+  flatten(put, ox - 12, oz - 9, ox + 12, oz + 9, y, MARBLE, STONE);
+  fill(put, ox - 11, y + 1, oz - 8, ox + 11, y + 1, oz + 8, MARBLE);
+  // steps
+  for (let s = 1; s <= 2; s++) fill(put, ox - 12 + s, y + 1 - s, oz - 9 + s, ox + 12 - s, y + 1 - s, oz + 9 - s, MARBLE);
+  // columns
+  const colsX = [-9, -3, 3, 9];
+  for (const cxx of colsX) for (const czz of [-6, 6]) {
+    for (let h = 1; h <= 8; h++) put(ox + cxx, y + 1 + h, oz + czz, MARBLE, true);
+    put(ox + cxx + 1, y + 9, oz + czz, MARBLE, true);
+    put(ox + cxx - 1, y + 9, oz + czz, MARBLE, true);
+    put(ox + cxx, y + 9, oz + czz + 1, MARBLE, true);
+    put(ox + cxx, y + 9, oz + czz - 1, MARBLE, true);
+  }
+  // entablature
+  fill(put, ox - 11, y + 10, oz - 8, ox + 11, y + 11, oz + 8, MARBLE);
+  // pediment
+  for (let i = 0; i < 7; i++) {
+    const w = 11 - i * 1.6;
+    fill(put, Math.round(ox - w), y + 12 + i, oz - 8, Math.round(ox + w), y + 12 + i, oz + 8, MARBLE);
+  }
+  // cella walls
+  fill(put, ox - 5, y + 2, oz - 4, ox + 5, y + 8, oz - 4, MARBLE);
+  fill(put, ox - 5, y + 2, oz + 4, ox + 5, y + 8, oz + 4, MARBLE);
+  fill(put, ox - 5, y + 2, oz - 4, ox - 5, y + 8, oz + 4, MARBLE);
+  fill(put, ox + 5, y + 2, oz - 4, ox + 5, y + 8, oz + 4, MARBLE);
+  // altar
+  fill(put, ox - 2, y + 2, oz - 2, ox + 2, y + 2, oz + 2, GOLD);
+  put(ox, y + 3, oz, GLOW, true);
+  put(ox, y + 4, oz, GLOW, true);
+}
+
+function bWizardTower(put, ox, oz) {
+  const y = surfaceHeight(ox, oz);
+  const H = 26, R = 5;
+  flatten(put, ox - 7, oz - 7, ox + 7, oz + 7, y, MOSSY, STONE);
+  for (let h = 0; h <= H; h++) {
+    const r = h > H - 6 ? R + 1 : R;
+    for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) {
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist > r + 0.4) continue;
+      if (dist < r - 1.1) {
+        if (h === 0) put(ox + dx, y, oz + dz, MOSSY, true);
+        continue;
+      }
+      put(ox + dx, y + h, oz + dz, DARK, true);
+    }
+    // windows
+    if (h > 4 && h % 5 === 0) {
+      put(ox + R, y + h, oz, GLOW, true);
+      put(ox - R, y + h, oz, GLOW, true);
+      put(ox, y + h, oz + R, GLOW, true);
+      put(ox, y + h, oz - R, GLOW, true);
+    }
+  }
+  // spiral stairs
+  for (let h = 1; h < H - 3; h++) {
+    const a = h * 0.55;
+    put(ox + Math.round(Math.cos(a) * 2.6), y + h, oz + Math.round(Math.sin(a) * 2.6), PLANKS, true);
+    put(ox + Math.round(Math.cos(a) * 3.6), y + h, oz + Math.round(Math.sin(a) * 3.6), PLANKS, true);
+  }
+  // roof cone
+  for (let i = 0; i < 6; i++) {
+    const r = Math.max(0, R + 2 - i);
+    fill(put, ox - r, y + H + 1 + i, oz - r, ox + r, y + H + 1 + i, oz + r, DARK);
+  }
+  put(ox, y + H + 8, oz, CRYSTAL, true);
+  fill(put, ox - 1, y + H + 7, oz - 1, ox + 1, y + H + 7, oz + 1, CRYSTAL);
+  // door
+  for (let h = 1; h <= 3; h++) { put(ox, y + h, oz + R, AIR, true); put(ox + 1, y + h, oz + R, AIR, true); }
+}
+
+function bWorldTree(put, ox, oz) {
+  const y = surfaceHeight(ox, oz);
+  const H = 46;
+  flatten(put, ox - 16, oz - 16, ox + 16, oz + 16, y, GRASS, DIRT);
+  // root buttresses
+  for (let a = 0; a < TAU; a += TAU / 8) {
+    const dx = Math.cos(a), dz = Math.sin(a);
+    for (let s = 3; s < 15; s++) {
+      const hgt = Math.max(0, 7 - s * 0.42);
+      for (let yy = 0; yy < hgt; yy++)
+        put(Math.round(ox + dx * s), y + yy, Math.round(oz + dz * s), LOG, true);
+    }
+  }
+  // trunk
+  for (let h = 0; h < H; h++) {
+    const r = h < 6 ? 7 : (h < 30 ? 5 : 3.4);
+    for (let dz = -8; dz <= 8; dz++) for (let dx = -8; dx <= 8; dx++) {
+      if (dx * dx + dz * dz <= r * r) put(ox + dx, y + h, oz + dz, LOG, true);
+    }
+  }
+  // branches
+  for (let b = 0; b < 7; b++) {
+    const a = b * TAU / 7 + 0.4;
+    const start = 24 + (b % 3) * 5;
+    let x = ox + Math.cos(a) * 3, z = oz + Math.sin(a) * 3, yy = y + start;
+    for (let s = 0; s < 13; s++) {
+      x += Math.cos(a) * 1.5; z += Math.sin(a) * 1.5; yy += 0.9;
+      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++)
+        put(Math.round(x) + dx, Math.round(yy), Math.round(z) + dz, LOG, true);
+    }
+    // canopy blob at branch end
+    const cr = 8;
+    for (let dy = -cr; dy <= cr; dy++) for (let dz = -cr; dz <= cr; dz++) for (let dx = -cr; dx <= cr; dx++) {
+      const dd = dx * dx + dy * dy * 1.7 + dz * dz;
+      if (dd < cr * cr * 0.85) put(Math.round(x) + dx, Math.round(yy) + dy, Math.round(z) + dz, LEAVES);
+    }
+  }
+  // main canopy
+  const CR = 21;
+  for (let dy = -8; dy <= 16; dy++) for (let dz = -CR; dz <= CR; dz++) for (let dx = -CR; dx <= CR; dx++) {
+    const dd = dx * dx + (dy * 0.8) * (dy * 0.8) + dz * dz;
+    if (dd < CR * CR) put(ox + dx, y + H - 6 + dy, oz + dz, LEAVES);
+  }
+  // spiral plank bridge
+  for (let i = 0; i < 150; i++) {
+    const a = i * 0.09, rr = 12 - i * 0.045, yy = y + 4 + i * 0.24;
+    put(Math.round(ox + Math.cos(a) * rr), Math.round(yy), Math.round(oz + Math.sin(a) * rr), PLANKS, true);
+    put(Math.round(ox + Math.cos(a) * (rr - 1.3)), Math.round(yy), Math.round(oz + Math.sin(a) * (rr - 1.3)), PLANKS, true);
+    if (i % 22 === 0) {
+      put(Math.round(ox + Math.cos(a) * rr), Math.round(yy) + 1, Math.round(oz + Math.sin(a) * rr), AIR, true);
+      put(Math.round(ox + Math.cos(a) * rr), Math.round(yy) + 2, Math.round(oz + Math.sin(a) * rr), LAMP, true);
+    }
+  }
+  // lanterns in the canopy
+  for (let i = 0; i < 14; i++) {
+    const a = i * 2.2, rr = 6 + (i % 4) * 3.5;
+    put(Math.round(ox + Math.cos(a) * rr), y + H - 12 + (i % 5), Math.round(oz + Math.sin(a) * rr), GLOW, true);
+  }
+}
+
+function bNordicHall(put, ox, oz) {
+  const y = surfaceHeight(ox, oz);
+  const W = 13, L = 8;
+  flatten(put, ox - W - 2, oz - L - 2, ox + W + 2, oz + L + 2, y, PLANKS, DIRT);
+  // walls
+  for (let h = 1; h <= 6; h++) {
+    for (let x = -W; x <= W; x++) { put(ox + x, y + h, oz - L, PLANKS, true); put(ox + x, y + h, oz + L, PLANKS, true); }
+    for (let z = -L; z <= L; z++) { put(ox - W, y + h, oz + z, PLANKS, true); put(ox + W, y + h, oz + z, PLANKS, true); }
+  }
+  // corner posts
+  for (const [sx, sz] of [[-W, -L], [W, -L], [-W, L], [W, L]])
+    for (let h = 1; h <= 7; h++) put(ox + sx, y + h, oz + sz, LOG, true);
+  // gabled roof
+  for (let i = 0; i <= L + 1; i++) {
+    const hw = W + 1 - Math.round(i * 0.35);
+    for (let x = -hw; x <= hw; x++) {
+      const rise = Math.round((hw - Math.abs(x)) * 0.55);
+      for (let r = 0; r <= rise; r++) {
+        put(ox + x, y + 7 + r, oz + i - L - 1, PLANKS, true);
+        put(ox + x, y + 7 + r, oz - i + L + 1, PLANKS, true);
+      }
+    }
+    // ridge
+    for (let r = 0; r <= 7; r++) put(ox, y + 7 + r, oz + i - L - 1, LOG, true), put(ox, y + 7 + r, oz - i + L + 1, LOG, true);
+  }
+  // long fire pit
+  for (let x = -W + 3; x <= W - 3; x++) {
+    put(ox + x, y, oz, GLOW, true);
+    put(ox + x, y, oz + 1, GLOW, true);
+  }
+  for (let x = -W + 2; x <= W - 2; x++) { put(ox + x, y + 1, oz - 2, COBBLE, true); put(ox + x, y + 1, oz + 3, COBBLE, true); }
+  // benches
+  for (let x = -W + 3; x <= W - 3; x++) { put(ox + x, y + 1, oz - 3, PLANKS, true); put(ox + x, y + 1, oz + 4, PLANKS, true); }
+  // door
+  for (let h = 1; h <= 4; h++) for (let z = -1; z <= 1; z++) put(ox - W, y + h, oz + z, AIR, true);
+  // totems outside
+  for (const sx of [-1, 1]) {
+    for (let h = 1; h <= 6; h++) put(ox + sx * (W + 3), y + h, oz, LOG, true);
+    put(ox + sx * (W + 3), y + 7, oz, BONE, true);
+    put(ox + sx * (W + 3), y + 6, oz + 1, BONE, true);
+    put(ox + sx * (W + 3), y + 6, oz - 1, BONE, true);
+  }
+}
+
+function bRuins(put, ox, oz) {
+  const y = surfaceHeight(ox, oz);
+  flatten(put, ox - 10, oz - 10, ox + 10, oz + 10, y, MOSSY, DIRT);
+  for (let i = 0; i < 7; i++) {
+    const a = hash2i(ox + i, oz - i, 3) * TAU;
+    const rr = 3 + hash2i(ox - i, oz + i, 5) * 7;
+    const bx = Math.round(ox + Math.cos(a) * rr), bz = Math.round(oz + Math.sin(a) * rr);
+    const hgt = 2 + Math.floor(hash2i(bx, bz, 7) * 7);
+    for (let h = 1; h <= hgt; h++) {
+      put(bx, y + h, bz, MOSSY, true);
+      if (hgt > 4 && h < hgt - 1 && hash2i(bx + h, bz, 11) > 0.6) put(bx + 1, y + h, bz, MOSSY, true);
+    }
+  }
+  // broken arch
+  for (let h = 1; h <= 7; h++) {
+    put(ox - 4, y + h, oz - 4, MOSSY, true);
+    put(ox + 4, y + h, oz - 4, MOSSY, true);
+  }
+  for (let x = -3; x <= 3; x++) put(ox + x, y + 7, oz - 4, MOSSY, true);
+  for (let x = -1; x <= 1; x++) put(ox + x, y + 8, oz - 4, MOSSY, true);
+  // fallen column
+  for (let x = 0; x < 8; x++) if (hash2i(ox + x, oz + 6, 13) > 0.25) put(ox + x, y + 1, oz + 6, MOSSY, true);
+  // rubble
+  for (let i = 0; i < 40; i++) {
+    const rx = Math.round(ox + (hash2i(ox, oz + i, 17) - 0.5) * 20);
+    const rz = Math.round(oz + (hash2i(ox + i, oz, 19) - 0.5) * 20);
+    if (hash2i(rx, rz, 23) > 0.55) put(rx, y + 1, rz, COBBLE);
+  }
+}
+
+function bCrystalObelisk(put, ox, oz) {
+  const y = surfaceHeight(ox, oz);
+  flatten(put, ox - 8, oz - 8, ox + 8, oz + 8, y, MARBLE, STONE);
+  fill(put, ox - 5, y + 1, oz - 5, ox + 5, y + 1, oz + 5, MARBLE);
+  fill(put, ox - 3, y + 2, oz - 3, ox + 3, y + 2, oz + 3, MARBLE);
+  const H = 22;
+  for (let h = 0; h < H; h++) {
+    const r = Math.max(1, 3 - h * 0.12);
+    for (let dz = -4; dz <= 4; dz++) for (let dx = -4; dx <= 4; dx++) {
+      if (dx * dx + dz * dz <= r * r + 0.6) put(ox + dx, y + 3 + h, oz + dz, CRYSTAL, true);
+    }
+    if (h % 4 === 0) put(ox, y + 3 + h, oz, GLOW, true);
+  }
+  put(ox, y + 3 + H, oz, GLOW, true);
+  put(ox, y + 4 + H, oz, CRYSTAL, true);
+  // rune stones around
+  for (let i = 0; i < 10; i++) {
+    const a = i * TAU / 10;
+    const rx = Math.round(ox + Math.cos(a) * 7), rz = Math.round(oz + Math.sin(a) * 7);
+    put(rx, y + 1, rz, MOSSY, true);
+    put(rx, y + 2, rz, MOSSY, true);
+    if (i % 2 === 0) put(rx, y + 3, rz, LAMP, true);
+  }
+}
+
+function bSkyIsland(put, ox, oz) {
+  const y = 58;
+  const R = 13;
+  for (let dz = -R; dz <= R; dz++) for (let dx = -R; dx <= R; dx++) {
+    const d = Math.sqrt(dx * dx + dz * dz);
+    if (d > R) continue;
+    const thick = Math.round((1 - d / R) * 8) + 1;
+    for (let k = 0; k < thick; k++) {
+      put(ox + dx, y - k, oz + dz, k === 0 ? GRASS : (k < 4 ? DIRT : STONE), true);
+    }
+    if (d > R - 1.6 && d < R - 0.4) put(ox + dx, y + 1, oz + dz, STONE, true);
+  }
+  // hanging roots
+  for (let i = 0; i < 5; i++) {
+    const a = hash2i(ox + i, oz, 29) * TAU;
+    const rr = R * 0.6 * hash2i(ox, oz + i, 31);
+    const rx = Math.round(ox + Math.cos(a) * rr), rz = Math.round(oz + Math.sin(a) * rr);
+    for (let k = 1; k < 10; k++) put(rx, y - 4 - k, rz, LOG, true);
+  }
+  // shrine
+  fill(put, ox - 4, y + 1, oz - 4, ox + 4, y + 1, oz + 4, MARBLE);
+  for (const [sx, sz] of [[-3, -3], [3, -3], [-3, 3], [3, 3]])
+    for (let h = 2; h <= 6; h++) put(ox + sx, y + h, oz + sz, MARBLE, true);
+  fill(put, ox - 4, y + 7, oz - 4, ox + 4, y + 7, oz + 4, MARBLE);
+  fill(put, ox - 2, y + 2, oz - 2, ox + 2, y + 2, oz + 2, GLOW);
+  put(ox, y + 3, oz, CRYSTAL, true);
+  // waterfall off the edge
+  for (let k = 0; k < 30; k++) {
+    put(ox + R - 1, y - 4 - k, oz, WATER, true);
+    put(ox + R - 2, y - 4 - k, oz, WATER, true);
+  }
+}
+
+function bDragonBones(put, ox, oz) {
+  const y = surfaceHeight(ox, oz);
+  flatten(put, ox - 14, oz - 8, ox + 14, oz + 8, y, SAND, SANDSTONE);
+  let x = ox - 12, z = oz, yy = y;
+  for (let s = 0; s < 24; s++) {
+    const arch = Math.sin(s / 24 * Math.PI);
+    const h = Math.round(arch * 7) + 1;
+    x += 1;
+    z = oz + Math.round(Math.sin(s * 0.3) * 2);
+    put(x, yy + h, z, BONE, true);
+    put(x, yy + h, z + 1, BONE, true);
+    // ribs
+    if (s > 3 && s < 21 && s % 2 === 0) {
+      for (let r = 1; r < h; r++) {
+        put(x, yy + r, z + 2 + Math.round(r * 0.3), BONE, true);
+        put(x, yy + r, z - 2 - Math.round(r * 0.3), BONE, true);
+      }
+    }
+  }
+  // skull
+  const sx = x + 3, sz = z;
+  for (let dz = -3; dz <= 3; dz++) for (let dy = -2; dy <= 3; dy++) for (let dx = 0; dx <= 6; dx++) {
+    const dd = (dx / 6) * (dx / 6) + (dy / 3) * (dy / 3) + (dz / 3) * (dz / 3);
+    if (dd < 1 && !(dx > 3 && dy < 0)) put(sx + dx, yy + 6 + dy, sz + dz, BONE, true);
+  }
+  for (const e of [-1, 1]) { put(sx + 2, yy + 8, sz + e * 2, GLOW, true); }
+}
+
+function bPyramid(put, ox, oz) {
+  const y = surfaceHeight(ox, oz);
+  const S = 16;
+  flatten(put, ox - S, oz - S, ox + S, oz + S, y, SANDSTONE, SANDSTONE);
+  for (let tier = 0; tier < 7; tier++) {
+    const half = S - tier * 2.3;
+    const h = tier * 2 + 1;
+    for (let yy = 0; yy < 2; yy++)
+      fill(put, Math.round(ox - half), y + h + yy, Math.round(oz - half),
+                Math.round(ox + half), y + h + yy, Math.round(oz + half), SANDSTONE);
+  }
+  // chamber
+  fill(put, ox - 4, y + 1, oz - 4, ox + 4, y + 1, oz + 4, SANDSTONE);
+  fill(put, ox - 3, y + 2, oz - 3, ox + 3, y + 5, oz + 3, AIR, true);
+  fill(put, ox - 3, y + 2, oz - 3, ox + 3, y + 2, oz + 3, GOLD);
+  put(ox, y + 3, oz, GLOW, true);
+  put(ox, y + 4, oz, GLOW, true);
+  put(ox, y + 5, oz, CRYSTAL, true);
+  // entrance
+  for (let h = 1; h <= 3; h++) for (let z = -1; z <= 1; z++) put(ox + S - 1, y + h, oz + z, AIR, true);
+  for (let k = 0; k < 7; k++) {
+    for (let z = -1; z <= 1; z++) put(ox + S - 2 - k, y + 1, oz + z, AIR, true);
+    put(ox + S - 2 - k, y + 2, oz, AIR, true);
+  }
+}
+
+function bMushroomVillage(put, ox, oz) {
+  const y = surfaceHeight(ox, oz);
+  flatten(put, ox - 14, oz - 14, ox + 14, oz + 14, y, GRASS, DIRT);
+  const spots = [[0, 0], [-9, -5], [8, -7], [-7, 8], [9, 7], [0, -11], [-12, 1]];
+  for (let i = 0; i < spots.length; i++) {
+    const [dx, dz] = spots[i];
+    const hx = ox + dx, hz = oz + dz;
+    const hgt = 4 + (i % 3);
+    for (let h = 1; h <= hgt; h++) {
+      for (let ddz = -2; ddz <= 2; ddz++) for (let ddx = -2; ddx <= 2; ddx++) {
+        if (Math.abs(ddx) === 2 && Math.abs(ddz) === 2) continue;
+        put(hx + ddx, y + h, hz + ddz, STEM, true);
+      }
+    }
+    // hollow
+    fill(put, hx - 1, y + 1, hz - 1, hx + 1, y + hgt, hz + 1, AIR, true);
+    put(hx, y + 1, hz, GLOW, true);
+    // cap roof
+    const cr = 5;
+    for (let dy = 0; dy <= 3; dy++) for (let ddz = -cr; ddz <= cr; ddz++) for (let ddx = -cr; ddx <= cr; ddx++) {
+      const dd = ddx * ddx + dz0(dy) + ddz * ddz;
+      const rr = cr - dy * 1.3;
+      if (dd < rr * rr) put(hx + ddx, y + hgt + 1 + dy, hz + ddz, MUSHROOM, true);
+    }
+    // door
+    put(hx, y + 1, hz + 2, AIR, true);
+    put(hx, y + 2, hz + 2, AIR, true);
+  }
+  // central lamp
+  for (let h = 1; h <= 5; h++) put(ox, y + h, oz, LOG, true);
+  put(ox, y + 6, oz, LAMP, true);
+}
+function dz0(dy) { return dy * dy * 2.2; }
+
+function bColossus(put, ox, oz) {
+  const y = surfaceHeight(ox, oz);
+  flatten(put, ox - 10, oz - 10, ox + 10, oz + 10, y, MARBLE, STONE);
+  // plinth
+  fill(put, ox - 9, y + 1, oz - 9, ox + 9, y + 3, oz + 9, MOSSY);
+  fill(put, ox - 7, y + 4, oz - 7, ox + 7, y + 4, oz + 7, MARBLE);
+  const base = y + 5;
+  // legs
+  for (const sx of [-3, 3]) for (let h = 0; h < 12; h++) {
+    for (let ddz = -2; ddz <= 2; ddz++) for (let ddx = -2; ddx <= 2; ddx++)
+      put(ox + sx + ddx, base + h, oz + ddz, MARBLE, true);
+  }
+  // torso
+  for (let h = 12; h < 26; h++) {
+    const w = h < 18 ? 6 : 5;
+    for (let ddz = -3; ddz <= 3; ddz++) for (let ddx = -w; ddx <= w; ddx++) {
+      if (Math.abs(ddx) + Math.abs(ddz) * 0.7 > w + 0.5) continue;
+      put(ox + ddx, base + h, oz + ddz, MARBLE, true);
+    }
+  }
+  // shoulders + arms
+  for (const sx of [-1, 1]) {
+    for (let h = 0; h < 14; h++) {
+      const ax = sx * (7 + Math.min(3, h * 0.25));
+      for (let ddz = -2; ddz <= 2; ddz++) for (let ddx = -2; ddx <= 2; ddx++)
+        put(Math.round(ox + ax) + ddx, base + 24 - h, oz + ddz, MARBLE, true);
+    }
+  }
+  // head
+  for (let dy = -4; dy <= 4; dy++) for (let ddz = -4; ddz <= 4; ddz++) for (let ddx = -4; ddx <= 4; ddx++) {
+    const dd = ddx * ddx + dy * dy * 1.2 + ddz * ddz;
+    if (dd < 17) put(ox + ddx, base + 30 + dy, oz + ddz, MARBLE, true);
+  }
+  for (const e of [-1, 1]) put(ox + e * 2, base + 31, oz - 4, GLOW, true);
+  // held crystal sphere
+  for (let dy = -3; dy <= 3; dy++) for (let ddz = -3; ddz <= 3; ddz++) for (let ddx = -3; ddx <= 3; ddx++) {
+    if (ddx * ddx + dy * dy + ddz * ddz < 10) put(ox + 10 + ddx, base + 16 + dy, oz + ddz, CRYSTAL, true);
+  }
+}
+
+function bRuneCircle(put, ox, oz) {
+  const y = surfaceHeight(ox, oz);
+  flatten(put, ox - 5, oz - 5, ox + 5, oz + 5, y, MOSSY, DIRT);
+  for (let i = 0; i < 12; i++) {
+    const a = i * TAU / 12;
+    const rx = Math.round(ox + Math.cos(a) * 4), rz = Math.round(oz + Math.sin(a) * 4);
+    put(rx, y + 1, rz, MOSSY, true);
+    put(rx, y + 2, rz, MOSSY, true);
+  }
+  fill(put, ox - 1, y, oz - 1, ox + 1, y, oz + 1, MARBLE);
+  put(ox, y + 1, oz, LAMP, true);
+}
+
+function bFrozenShrine(put, ox, oz) {
+  const y = surfaceHeight(ox, oz);
+  flatten(put, ox - 7, oz - 7, ox + 7, oz + 7, y, ICE, STONE);
+  for (let i = 0; i < 8; i++) {
+    const a = i * TAU / 8;
+    const rx = Math.round(ox + Math.cos(a) * 5), rz = Math.round(oz + Math.sin(a) * 5);
+    for (let h = 1; h <= 5 + (i % 3); h++) put(rx, y + h, rz, ICE, true);
+    put(rx, y + 6 + (i % 3), rz, CRYSTAL, true);
+  }
+  fill(put, ox - 2, y + 1, oz - 2, ox + 2, y + 1, oz + 2, ICE);
+  put(ox, y + 2, oz, GLOW, true);
+  put(ox, y + 3, oz, CRYSTAL, true);
+}
+
+const STRUCTS = [bGreekTemple, bWizardTower, bNordicHall, bRuins, bCrystalObelisk,
+                 bDragonBones, bPyramid, bMushroomVillage, bColossus, bFrozenShrine];
+const STRUCT_GRID = 128;
+const STRUCT_R = 48;
+const TREE_GRID = 11;
+const TREE_R = 5;
+
+function stampAll(d, cx, cz) {
+  const put = mkPutter(d, cx, cz);
+  const bx = cx * CHUNK, bz = cz * CHUNK;
+
+  // ---- world tree at the origin ----
+  if (bx - 24 < 0 + 24 && bx + CHUNK + 24 > -24 && bz - 24 < 24 && bz + CHUNK + 24 > -24) {
+    bWorldTree(put, 0, 0);
+  }
+
+  // ---- trees ----
+  const tg0x = Math.floor((bx - TREE_R) / TREE_GRID), tg1x = Math.floor((bx + CHUNK - 1 + TREE_R) / TREE_GRID);
+  const tg0z = Math.floor((bz - TREE_R) / TREE_GRID), tg1z = Math.floor((bz + CHUNK - 1 + TREE_R) / TREE_GRID);
+  for (let gx = tg0x; gx <= tg1x; gx++) for (let gz = tg0z; gz <= tg1z; gz++) {
+    const h0 = hash2i(gx, gz, 101);
+    if (h0 > 0.30) continue;
+    const wx = gx * TREE_GRID + Math.floor(hash2i(gx, gz, 103) * TREE_GRID);
+    const wz = gz * TREE_GRID + Math.floor(hash2i(gx, gz, 107) * TREE_GRID);
+    const near = Math.abs(wx) < 26 && Math.abs(wz) < 26;
+    if (near) continue;
+    const gy = surfaceHeight(wx, wz);
+    if (gy <= SEA + 1) continue;
+    const biome = biomeAt(wx, wz);
+    const desert = biome === 'desert';
+    if (desert && hash2i(wx, wz, 109) > 0.10) continue;
+    if (!desert && biome === 'snow' && hash2i(wx, wz, 113) > 0.45) continue;
+    const H = desert ? 5 + Math.floor(hash2i(wx, wz, 127) * 3) : 5 + Math.floor(hash2i(wx, wz, 127) * 4);
+    for (let h = 1; h <= H; h++) put(wx, gy + h, wz, desert ? SANDSTONE : LOG, true);
+    const cr = desert ? 2 : 2 + (hash2i(wx, wz, 131) > 0.5 ? 1 : 0);
+    if (desert) {
+      for (let dy = 1; dy <= 3; dy++)
+        for (let dz = -2; dz <= 2; dz++) for (let dx = -2; dx <= 2; dx++) {
+          const dd = dx * dx + dz * dz + (dy - 2) * (dy - 2) * 2;
+          if (dd < 7) put(wx + dx, gy + H + dy, wz + dz, LEAVES);
+        }
+    } else {
+      for (let dy = -1; dy <= 3; dy++)
+        for (let dz = -cr; dz <= cr; dz++) for (let dx = -cr; dx <= cr; dx++) {
+          const dd = dx * dx + dz * dz + Math.max(0, dy - 1) * 3;
+          if (dd < cr * cr + 1) put(wx + dx, gy + H + dy, wz + dz, biome === 'snow' ? ICE : LEAVES);
+        }
+    }
+  }
+
+  // ---- major structures ----
+  const sg0x = Math.floor((bx - STRUCT_R) / STRUCT_GRID), sg1x = Math.floor((bx + CHUNK - 1 + STRUCT_R) / STRUCT_GRID);
+  const sg0z = Math.floor((bz - STRUCT_R) / STRUCT_GRID), sg1z = Math.floor((bz + CHUNK - 1 + STRUCT_R) / STRUCT_GRID);
+  for (let gx = sg0x; gx <= sg1x; gx++) for (let gz = sg0z; gz <= sg1z; gz++) {
+    if (gx === 0 && gz === 0) continue;
+    const h0 = hash2i(gx, gz, 211);
+    if (h0 > 0.62) continue;
+    const wx = gx * STRUCT_GRID + 20 + Math.floor(hash2i(gx, gz, 223) * (STRUCT_GRID - 44));
+    const wz = gz * STRUCT_GRID + 20 + Math.floor(hash2i(gx, gz, 227) * (STRUCT_GRID - 44));
+    if (Math.abs(wx) < 40 && Math.abs(wz) < 40) continue;
+    const gy = surfaceHeight(wx, wz);
+    if (gy <= SEA + 1 || gy > WORLD_H - 30) continue;
+    const type = STRUCTS[Math.floor(hash2i(gx, gz, 233) * STRUCTS.length) % STRUCTS.length];
+    type(put, wx, wz);
+  }
+
+  // ---- sky islands ----
+  const kg0x = Math.floor((bx - 20) / 176), kg1x = Math.floor((bx + CHUNK - 1 + 20) / 176);
+  const kg0z = Math.floor((bz - 20) / 176), kg1z = Math.floor((bz + CHUNK - 1 + 20) / 176);
+  for (let gx = kg0x; gx <= kg1x; gx++) for (let gz = kg0z; gz <= kg1z; gz++) {
+    if (hash2i(gx, gz, 307) > 0.55) continue;
+    const wx = gx * 176 + Math.floor(hash2i(gx, gz, 311) * 176);
+    const wz = gz * 176 + Math.floor(hash2i(gx, gz, 313) * 176);
+    bSkyIsland(put, wx, wz);
+  }
+
+  // ---- frequent rune circles ----
+  const rg0x = Math.floor((bx - 6) / 48), rg1x = Math.floor((bx + CHUNK - 1 + 6) / 48);
+  const rg0z = Math.floor((bz - 6) / 48), rg1z = Math.floor((bz + CHUNK - 1 + 6) / 48);
+  for (let gx = rg0x; gx <= rg1x; gx++) for (let gz = rg0z; gz <= rg1z; gz++) {
+    if (hash2i(gx, gz, 401) > 0.30) continue;
+    const wx = gx * 48 + Math.floor(hash2i(gx, gz, 409) * 48);
+    const wz = gz * 48 + Math.floor(hash2i(gx, gz, 419) * 48);
+    if (Math.abs(wx) < 30 && Math.abs(wz) < 30) continue;
+    const gy = surfaceHeight(wx, wz);
+    if (gy <= SEA + 1) continue;
+    bRuneCircle(put, wx, wz);
+  }
+}
+
+/* ============================================================
+   7. Meshing
+   ============================================================ */
+const FACES = [
+  { dir: [1, 0, 0],  shade: 0.80, corners: [[1, 0, 1], [1, 0, 0], [1, 1, 0], [1, 1, 1]] },
+  { dir: [-1, 0, 0], shade: 0.72, corners: [[0, 0, 0], [0, 0, 1], [0, 1, 1], [0, 1, 0]] },
+  { dir: [0, 1, 0],  shade: 1.00, corners: [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]] },
+  { dir: [0, -1, 0], shade: 0.52, corners: [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]] },
+  { dir: [0, 0, 1],  shade: 0.90, corners: [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]] },
+  { dir: [0, 0, -1], shade: 0.66, corners: [[1, 0, 0], [0, 0, 0], [0, 1, 0], [1, 1, 0]] }
+];
+for (const f of FACES) {
+  const nAxis = f.dir.findIndex(v => v !== 0);
+  f.t = [0, 1, 2].filter(i => i !== nAxis);
+  f.ab = f.corners.map(c => [c[f.t[0]], c[f.t[1]]]);
+}
+const AO_LUT = [0.46, 0.66, 0.83, 1.0];
+
+const tileOf = (id, f) => {
+  const t = BLOCKS[id].tiles;
+  if (f === 2) return t.top;
+  if (f === 3) return t.bottom;
+  return t.side !== undefined ? t.side : t.top;
+};
+
+function uvRect(tile) {
+  const col = tile % ATLAS_N, row = (tile / ATLAS_N) | 0;
+  const s = 1 / ATLAS_N;
+  return { u0: col * s, u1: (col + 1) * s, v0: 1 - (row + 1) * s, v1: 1 - row * s };
+}
+const UV_RECTS = [];
+for (let i = 0; i < ATLAS_N * ATLAS_N; i++) UV_RECTS.push(uvRect(i));
+
+function buildMesh(cx, cz, data) {
+  const bx = cx * CHUNK, bz = cz * CHUNK;
+  const P = [], W = [];
+  P.pos = []; P.uv = []; P.col = []; P.idx = [];
+  W.pos = []; W.uv = []; W.col = []; W.idx = [];
+
+  for (let y = 0; y < WORLD_H; y++) {
+    for (let z = 0; z < CHUNK; z++) {
+      for (let x = 0; x < CHUNK; x++) {
+        const id = data[idxLocal(x, y, z)];
+        if (id === AIR) continue;
+        const def = BLOCKS[id];
+        const A = def.liquid ? W : P;
+        for (let f = 0; f < 6; f++) {
+          const face = FACES[f];
+          const nx = x + face.dir[0], ny = y + face.dir[1], nz = z + face.dir[2];
+          const nid = ny < 0 || ny >= WORLD_H ? AIR : getBlockWorld(bx + nx, ny, bz + nz);
+          if (nid === id) continue;
+          const ndef = BLOCKS[nid];
+          if (ndef.opaque) continue;
+          if (def.liquid && nid !== AIR) continue;
+
+          const tile = tileOf(id, f);
+          const r = UV_RECTS[tile];
+          const base = A.pos.length / 3;
+          const ao = [0, 0, 0, 0];
+
+          for (let i = 0; i < 4; i++) {
+            const c = face.corners[i];
+            A.pos.push(x + c[0], y + c[1], z + c[2]);
+            const u = (i === 0 || i === 3) ? r.u0 : r.u1;
+            const v = (i === 0 || i === 1) ? r.v0 : r.v1;
+            A.uv.push(u, v);
+
+            const [a, b] = face.ab[i];
+            const sa = a * 2 - 1, sb = b * 2 - 1;
+            const t0 = face.t[0], t1 = face.t[1];
+            const o1 = [0, 0, 0]; o1[t0] = sa;
+            const o2 = [0, 0, 0]; o2[t1] = sb;
+            const nX = bx + nx, nY = ny, nZ = bz + nz;
+            const s1 = BLOCKS[getBlockWorld(nX + o1[0], nY + o1[1], nZ + o1[2])].opaque ? 1 : 0;
+            const s2 = BLOCKS[getBlockWorld(nX + o2[0], nY + o2[1], nZ + o2[2])].opaque ? 1 : 0;
+            const cc = BLOCKS[getBlockWorld(nX + o1[0] + o2[0], nY + o1[1] + o2[1], nZ + o1[2] + o2[2])].opaque ? 1 : 0;
+            const v2 = (s1 && s2) ? 0 : 3 - (s1 + s2 + cc);
+            ao[i] = v2;
+            const br = face.shade * AO_LUT[v2];
+            A.col.push(br, br, br);
+          }
+          if (ao[0] + ao[2] > ao[1] + ao[3]) {
+            A.idx.push(base + 1, base + 2, base + 3, base + 1, base + 3, base);
+          } else {
+            A.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+          }
+        }
+      }
+    }
+  }
+  return { solid: P, water: W };
+}
+
+function toGeometry(a) {
+  if (!a.idx.length) return null;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(a.pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(a.uv, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(a.col, 3));
+  g.setIndex(a.idx);
+  g.computeBoundingSphere();
+  return g;
+}
+
+/* ============================================================
+   8. Scene
+   ============================================================ */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9ecbec);
+scene.fog = new THREE.Fog(0x9ecbec, 60, 168);
+
+const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.08, 400);
+
+const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const atlas = buildAtlas();
+const matSolid = new THREE.MeshBasicMaterial({ map: atlas.tex, vertexColors: true, fog: true });
+const matWater = new THREE.MeshBasicMaterial({
+  map: atlas.tex, vertexColors: true, transparent: true, opacity: 0.72,
+  depthWrite: false, side: THREE.DoubleSide, fog: true
+});
+
+scene.add(new THREE.AmbientLight(0xffffff, 1));
+
+// sun disc
+{
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, 'rgba(255,253,230,1)');
+  grd.addColorStop(0.35, 'rgba(255,244,190,0.85)');
+  grd.addColorStop(1, 'rgba(255,235,170,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const tex = new THREE.CanvasTexture(c);
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false }));
+  spr.scale.set(70, 70, 1);
+  scene.add(spr);
+  window.__sun = spr;
+}
+
+// clouds
+let cloudMat = null;
+{
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, 128, 128);
+  const rnd = makeRng(4242);
+  for (let i = 0; i < 46; i++) {
+    const x = rnd() * 128, y = rnd() * 128, r = 6 + rnd() * 18;
+    const grd = g.createRadialGradient(x, y, 0, x, y, r);
+    grd.addColorStop(0, 'rgba(255,255,255,0.72)');
+    grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grd; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(14, 14);
+  cloudMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.62, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(1900, 1900), cloudMat);
+  plane.rotation.x = -Math.PI / 2;
+  plane.position.y = 108;
+  scene.add(plane);
+  window.__clouds = plane;
+}
+
+/* ============================================================
+   9. Chunk streaming
+   ============================================================ */
+let renderDist = 5;
+const worldGroup = new THREE.Group();
+scene.add(worldGroup);
+
+function disposeChunk(c) {
+  if (c.mesh) { worldGroup.remove(c.mesh); c.mesh.geometry.dispose(); c.mesh = null; }
+  if (c.wmesh) { worldGroup.remove(c.wmesh); c.wmesh.geometry.dispose(); c.wmesh = null; }
+}
+
+function meshChunk(c) {
+  disposeChunk(c);
+  const m = buildMesh(c.cx, c.cz, c.data);
+  const gs = toGeometry(m.solid);
+  if (gs) {
+    const mesh = new THREE.Mesh(gs, matSolid);
+    mesh.position.set(c.cx * CHUNK, 0, c.cz * CHUNK);
+    mesh.frustumCulled = true;
+    worldGroup.add(mesh);
+    c.mesh = mesh;
+  }
+  const gw = toGeometry(m.water);
+  if (gw) {
+    const mesh = new THREE.Mesh(gw, matWater);
+    mesh.position.set(c.cx * CHUNK, 0, c.cz * CHUNK);
+    mesh.renderOrder = 2;
+    worldGroup.add(mesh);
+    c.wmesh = mesh;
+  }
+}
+
+const dirty = new Set();
+function markDirty(x, y, z) {
+  const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
+  dirty.add(key2(cx, cz));
+  const lx = x - cx * CHUNK, lz = z - cz * CHUNK;
+  if (lx === 0) dirty.add(key2(cx - 1, cz));
+  if (lx === CHUNK - 1) dirty.add(key2(cx + 1, cz));
+  if (lz === 0) dirty.add(key2(cx, cz - 1));
+  if (lz === CHUNK - 1) dirty.add(key2(cx, cz + 1));
+}
+
+let lastCx = null, lastCz = null;
+const pendingData = [];
+const pendingMesh = [];
+
+function updateWorld(px, pz) {
+  const pcx = Math.floor(px / CHUNK), pcz = Math.floor(pz / CHUNK);
+  if (pcx !== lastCx || pcz !== lastCz || renderDistDirty) {
+    lastCx = pcx; lastCz = pcz; renderDistDirty = false;
+    pendingData.length = 0; pendingMesh.length = 0;
+    const R = renderDist;
+    const order = [];
+    for (let dz = -R; dz <= R; dz++) for (let dx = -R; dx <= R; dx++) {
+      const d = Math.sqrt(dx * dx + dz * dz);
+      if (d > R + 0.6) continue;
+      order.push([pcx + dx, pcz + dz, d]);
+    }
+    order.sort((a, b) => a[2] - b[2]);
+    for (const [cx, cz] of order) {
+      const c = chunks.get(key2(cx, cz));
+      if (!c || !c.data) pendingData.push([cx, cz]);
+      else if (!c.mesh && !c.wmesh) pendingMesh.push(key2(cx, cz));
+    }
+    // unload
+    for (const [k, c] of chunks) {
+      const dx = c.cx - pcx, dz = c.cz - pcz;
+      if (dx * dx + dz * dz > (R + 3) * (R + 3)) { disposeChunk(c); chunks.delete(k); }
+    }
+  }
+}
+
+let renderDistDirty = true;
+
+function pump(budgetMs) {
+  const t0 = performance.now();
+  while (pendingData.length && performance.now() - t0 < budgetMs) {
+    const [cx, cz] = pendingData.shift();
+    ensureData(cx, cz);
+    pendingMesh.push(key2(cx, cz));
+  }
+  while (pendingMesh.length && performance.now() - t0 < budgetMs) {
+    const k = pendingMesh.shift();
+    const c = chunks.get(k);
+    if (c && c.data) meshChunk(c);
+  }
+  if (dirty.size) {
+    for (const k of dirty) {
+      const c = chunks.get(k);
+      if (c && c.data) meshChunk(c);
+    }
+    dirty.clear();
+  }
+}
+
+/* ============================================================
+   10. Player
+   ============================================================ */
+const EPS = 1e-3;
+const player = {
+  x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0,
+  yaw: 0, pitch: 0, onGround: false, fly: false,
+  R: 0.32, H: 1.78, EYE: 1.62, inWater: false,
+  lastSpace: 0, sel: 0
+};
+
+function solidAt(x, y, z) { return BLOCKS[getBlockWorld(Math.floor(x), Math.floor(y), Math.floor(z))].solid; }
+
+function collides(x, y, z) {
+  const r = player.R, hh = player.H;
+  const x0 = Math.floor(x - r), x1 = Math.floor(x + r);
+  const z0 = Math.floor(z - r), z1 = Math.floor(z + r);
+  const y0 = Math.floor(y + EPS), y1 = Math.floor(y + hh - EPS);
+  for (let yy = y0; yy <= y1; yy++)
+    for (let zz = z0; zz <= z1; zz++)
+      for (let xx = x0; xx <= x1; xx++)
+        if (solidAt(xx + 0.5, yy + 0.5, zz + 0.5)) return true;
+  return false;
+}
+
+function moveAxis(axis, amt) {
+  if (amt === 0) return false;
+  const steps = Math.ceil(Math.abs(amt) / 0.18);
+  const inc = amt / steps;
+  let hit = false;
+  for (let i = 0; i < steps; i++) {
+    if (axis === 0) player.x += inc; else if (axis === 1) player.y += inc; else player.z += inc;
+    if (collides(player.x, player.y, player.z)) {
+      if (axis === 0) player.x -= inc; else if (axis === 1) player.y -= inc; else player.z -= inc;
+      hit = true;
+      break;
+    }
+  }
+  return hit;
+}
+
+function spawnPlayer() {
+  // Spawn on open ground at a distance, facing the World Tree at the origin,
+  // so the opening frame is a vista instead of the inside of a trunk.
+  let sx = 0, sz = 0;
+  for (let r = 96; r < 260; r += 6) {
+    let found = false;
+    for (let a = 0; a < TAU; a += 0.25) {
+      const x = Math.round(Math.cos(a) * r), z = Math.round(Math.sin(a) * r);
+      const h = surfaceHeight(x, z);
+      if (h <= SEA + 2) continue;
+      // avoid spawning inside a structure footprint
+      let clear = true;
+      for (let dy = 1; dy <= 3; dy++) {
+        if (solidAt(x + 0.5, h + dy, z + 0.5)) { clear = false; break; }
+      }
+      if (!clear) continue;
+      sx = x; sz = z; found = true;
+      break;
+    }
+    if (found) break;
+  }
+  let y = surfaceHeight(sx, sz) + 1;
+  while (y < WORLD_H - 3 && solidAt(sx + 0.5, y + 0.5, sz + 0.5)) y++;
+  player.x = sx + 0.5; player.y = y + 0.1; player.z = sz + 0.5;
+  player.yaw = Math.atan2(sx, sz);
+  player.pitch = -0.06;
+}
+
+/* ============================================================
+   11. Input
+   ============================================================ */
+const keys = Object.create(null);
+const canvas = renderer.domElement;
+
+const startEl = document.getElementById('start');
+startEl.addEventListener('click', () => {
+  canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
+  if (canvas.requestPointerLock) canvas.requestPointerLock();
+  startEl.classList.add('gone');
+});
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement !== canvas) startEl.classList.remove('gone');
+});
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+canvas.addEventListener('mousemove', e => {
+  if (document.pointerLockElement !== canvas) return;
+  player.yaw -= e.movementX * 0.0022;
+  player.pitch -= e.movementY * 0.0022;
+  const lim = Math.PI / 2 - 0.001;
+  player.pitch = Math.max(-lim, Math.min(lim, player.pitch));
+});
+
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'Space') e.preventDefault();
+  if (e.code === 'Space') {
+    const now = performance.now();
+    if (now - player.lastSpace < 300) { player.fly = !player.fly; player.vy = 0; }
+    player.lastSpace = now;
+  }
+  if (e.code === 'Minus' || e.code === 'NumpadSubtract') { renderDist = Math.max(2, renderDist - 1); renderDistDirty = true; }
+  if (e.code === 'Equal' || e.code === 'NumpadAdd') { renderDist = Math.min(9, renderDist + 1); renderDistDirty = true; }
+  const n = e.code.match(/^Digit([1-9])$/);
+  if (n) { player.sel = Math.min(HOTBAR.length - 1, +n[1] - 1); paintHotbar(); }
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+window.addEventListener('wheel', e => {
+  if (document.pointerLockElement !== canvas) return;
+  player.sel = (player.sel + (e.deltaY > 0 ? 1 : -1) + HOTBAR.length) % HOTBAR.length;
+  paintHotbar();
+}, { passive: true });
+
+/* ---------- voxel raycast ---------- */
+function raycastVoxel(ox, oy, oz, dx, dy, dz, maxD) {
+  let x = Math.floor(ox), y = Math.floor(oy), z = Math.floor(oz);
+  const stepX = dx > 0 ? 1 : -1, stepY = dy > 0 ? 1 : -1, stepZ = dz > 0 ? 1 : -1;
+  const tDeltaX = Math.abs(1 / dx), tDeltaY = Math.abs(1 / dy), tDeltaZ = Math.abs(1 / dz);
+  let tMaxX = ((dx > 0 ? (x + 1 - ox) : (ox - x)) || 1e-9) * tDeltaX;
+  let tMaxY = ((dy > 0 ? (y + 1 - oy) : (oy - y)) || 1e-9) * tDeltaY;
+  let tMaxZ = ((dz > 0 ? (z + 1 - oz) : (oz - z)) || 1e-9) * tDeltaZ;
+  let nx = 0, ny = 0, nz = 0;
+  for (let i = 0; i < 256; i++) {
+    const id = getBlockWorld(x, y, z);
+    if (id !== AIR && !BLOCKS[id].liquid) return { x, y, z, nx, ny, nz, id };
+    if (tMaxX < tMaxY && tMaxX < tMaxZ) {
+      if (tMaxX > maxD) break;
+      x += stepX; tMaxX += tDeltaX; nx = -stepX; ny = 0; nz = 0;
+    } else if (tMaxY < tMaxZ) {
+      if (tMaxY > maxD) break;
+      y += stepY; tMaxY += tDeltaY; nx = 0; ny = -stepY; nz = 0;
+    } else {
+      if (tMaxZ > maxD) break;
+      z += stepZ; tMaxZ += tDeltaZ; nx = 0; ny = 0; nz = -stepZ;
+    }
+  }
+  return null;
+}
+
+function setBlock(x, y, z, id) {
+  if (y < 0 || y >= WORLD_H) return;
+  const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
+  const c = chunks.get(key2(cx, cz));
+  if (!c || !c.data) return;
+  c.data[idxLocal(x - cx * CHUNK, y, z - cz * CHUNK)] = id;
+  markDirty(x, y, z);
+}
+
+const outline = new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.BoxGeometry(1.004, 1.004, 1.004)),
+  new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.55, fog: false })
+);
+outline.visible = false;
+scene.add(outline);
+
+let target = null;
+canvas.addEventListener('mousedown', e => {
+  if (document.pointerLockElement !== canvas) return;
+  if (!target) return;
+  if (e.button === 0) {
+    const id = target.id;
+    setBlock(target.x, target.y, target.z, AIR);
+    burst(target.x + 0.5, target.y + 0.5, target.z + 0.5, id);
+  } else if (e.button === 2) {
+    const px = target.x + target.nx, py = target.y + target.ny, pz = target.z + target.nz;
+    if (py < 0 || py >= WORLD_H) return;
+    const place = HOTBAR[player.sel];
+    const oldX = player.x, oldY = player.y, oldZ = player.z;
+    setBlock(px, py, pz, place);
+    if (collides(oldX, oldY, oldZ) ||
+        (Math.abs(px + 0.5 - player.x) < 0.85 && Math.abs(pz + 0.5 - player.z) < 0.85 &&
+         py + 1 > player.y && py < player.y + player.H)) {
+      setBlock(px, py, pz, AIR);
+    }
+  }
+});
+
+/* ---------- break particles ---------- */
+const POOL = 180;
+const pGeom = new THREE.BoxGeometry(0.14, 0.14, 0.14);
+{
+  const vc = new Float32Array(pGeom.attributes.position.count * 3);
+  vc.fill(1);
+  pGeom.setAttribute('color', new THREE.BufferAttribute(vc, 3));
+}
+const pMat = new THREE.MeshBasicMaterial({ vertexColors: true, map: atlas.tex, fog: true });
+const pMesh = new THREE.InstancedMesh(pGeom, pMat, POOL);
+pMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+pMesh.count = POOL;
+pMesh.frustumCulled = false;
+scene.add(pMesh);
+const parts = [];
+for (let i = 0; i < POOL; i++) parts.push({ life: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 });
+const pColor = new THREE.Color();
+{
+  const arr = new Float32Array(POOL * 3);
+  for (let i = 0; i < POOL; i++) { arr[i * 3] = 1; arr[i * 3 + 1] = 1; arr[i * 3 + 2] = 1; }
+  pMesh.instanceColor = new THREE.InstancedBufferAttribute(arr, 3);
+}
+const dummy = new THREE.Object3D();
+function burst(x, y, z, id) {
+  const r = UV_RECTS[tileOf(id, 2)];
+  const cx = (r.u0 + r.u1) / 2, cy = (r.v0 + r.v1) / 2;
+  pColor.setRGB(cx * 1.4, cy * 1.4, 0.9);
+  let n = 0;
+  for (let i = 0; i < POOL && n < 12; i++) {
+    const p = parts[i];
+    if (p.life > 0) continue;
+    p.life = 0.6 + Math.random() * 0.5;
+    p.x = x + (Math.random() - .5) * .7;
+    p.y = y + (Math.random() - .5) * .7;
+    p.z = z + (Math.random() - .5) * .7;
+    p.vx = (Math.random() - .5) * 3.4;
+    p.vy = 1.6 + Math.random() * 2.6;
+    p.vz = (Math.random() - .5) * 3.4;
+    pMesh.instanceColor.setXYZ(i, pColor.r * 0.9 + 0.1, pColor.g * 0.9 + 0.1, pColor.b * 0.9 + 0.1);
+    n++;
+  }
+  pMesh.instanceColor.needsUpdate = true;
+}
+function stepParts(dt) {
+  for (let i = 0; i < POOL; i++) {
+    const p = parts[i];
+    if (p.life <= 0) { dummy.position.set(0, -9999, 0); dummy.scale.setScalar(0.0001); }
+    else {
+      p.life -= dt;
+      p.vy -= 15 * dt;
+      p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+      if (solidAt(p.x, p.y, p.z)) { p.vy = Math.abs(p.vy) * 0.28; p.vx *= 0.6; p.vz *= 0.6; }
+      dummy.position.set(p.x, p.y, p.z);
+      dummy.scale.setScalar(Math.max(0.001, Math.min(1, p.life * 2.2)));
+    }
+    dummy.rotation.set(p.x * 2, p.y * 2, p.z * 2);
+    dummy.updateMatrix();
+    pMesh.setMatrixAt(i, dummy.matrix);
+  }
+  pMesh.instanceMatrix.needsUpdate = true;
+}
+
+/* ============================================================
+   12. HUD
+   ============================================================ */
+const barEl = document.getElementById('bar');
+const infoEl = document.getElementById('info');
+function paintHotbar() {
+  barEl.innerHTML = '';
+  for (let i = 0; i < 9; i++) {
+    const id = HOTBAR[i];
+    const d = document.createElement('div');
+    d.className = 'slot' + (i === player.sel ? ' on' : '');
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = TILE;
+    const g = cv.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    const tile = tileOf(id, 2);
+    const col = tile % ATLAS_N, row = (tile / ATLAS_N) | 0;
+    g.drawImage(atlas.canvas, col * TILE, row * TILE, TILE, TILE, 0, 0, TILE, TILE);
+    d.appendChild(cv);
+    const k = document.createElement('span'); k.className = 'k'; k.textContent = (i + 1);
+    const n = document.createElement('span'); n.className = 'n'; n.textContent = BLOCKS[id].name;
+    d.appendChild(k); d.appendChild(n);
+    barEl.appendChild(d);
+  }
+}
+paintHotbar();
+
+/* ============================================================
+   13. Loop
+   ============================================================ */
+const clock = new THREE.Clock();
+let fpsT = 0, fpsN = 0, fps = 0, showDebug = true;
+
+function update(dt) {
+  // ---- movement ----
+  const sin = Math.sin(player.yaw), cos = Math.cos(player.yaw);
+  let fx = 0, fz = 0;
+  if (keys['KeyW']) { fx -= sin; fz -= cos; }
+  if (keys['KeyS']) { fx += sin; fz += cos; }
+  if (keys['KeyA']) { fx -= cos; fz += sin; }
+  if (keys['KeyD']) { fx += cos; fz -= sin; }
+  const len = Math.hypot(fx, fz);
+  if (len > 0) { fx /= len; fz /= len; }
+
+  player.inWater = BLOCKS[getBlockWorld(Math.floor(player.x), Math.floor(player.y + 0.4), Math.floor(player.z))].liquid;
+  const sprint = keys['ShiftLeft'] || keys['ShiftRight'];
+  let speed = player.fly ? (sprint ? 22 : 11) : (sprint ? 7.4 : 4.6);
+  if (player.inWater && !player.fly) speed *= 0.62;
+
+  const accel = player.onGround || player.fly ? 22 : 9;
+  player.vx += (fx * speed - player.vx) * Math.min(1, accel * dt);
+  player.vz += (fz * speed - player.vz) * Math.min(1, accel * dt);
+
+  if (player.fly) {
+    let vy = 0;
+    if (keys['Space']) vy += speed;
+    if (keys['ControlLeft'] || keys['ShiftLeft']) vy -= 0;
+    if (keys['KeyC'] || keys['ControlRight']) vy -= speed;
+    player.vy += (vy - player.vy) * Math.min(1, 12 * dt);
+  } else {
+    if (player.inWater) {
+      player.vy -= 9 * dt;
+      if (keys['Space']) player.vy = 3.4;
+      player.vy = Math.max(-2.4, player.vy);
+    } else {
+      player.vy -= 27 * dt;
+      if (keys['Space'] && player.onGround) { player.vy = 8.3; player.onGround = false; }
+    }
+    player.vy = Math.max(-42, player.vy);
+  }
+
+  moveAxis(1, player.vy * dt);
+  const hitY = collides(player.x, player.y, player.z);
+  player.onGround = false;
+  if (player.vy < 0) {
+    const probe = collides(player.x, player.y - 0.06, player.z);
+    if (probe) player.onGround = true;
+  }
+  if (hitY || player.onGround) player.vy = 0;
+
+  const hx = moveAxis(0, player.vx * dt);
+  const hz = moveAxis(2, player.vz * dt);
+  if (hx) player.vx = 0;
+  if (hz) player.vz = 0;
+
+  if (player.y < -20) { spawnPlayer(); player.vy = 0; }
+
+  // ---- camera ----
+  camera.position.set(player.x, player.y + player.EYE, player.z);
+  camera.rotation.set(0, 0, 0);
+  camera.rotateY(player.yaw);
+  camera.rotateX(player.pitch);
+
+  // ---- target block ----
+  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  target = raycastVoxel(camera.position.x, camera.position.y, camera.position.z, dir.x, dir.y, dir.z, 6.5);
+  if (target) {
+    outline.position.set(target.x + 0.5, target.y + 0.5, target.z + 0.5);
+    outline.visible = true;
+  } else outline.visible = false;
+
+  // ---- sky follow ----
+  if (window.__sun) window.__sun.position.set(camera.position.x + 150, 190, camera.position.z - 320);
+  if (window.__clouds) {
+    window.__clouds.position.x = camera.position.x;
+    window.__clouds.position.z = camera.position.z;
+    cloudMat.map.offset.x += dt * 0.0035;
+    cloudMat.map.offset.y += dt * 0.0012;
+  }
+}
+
+function updateInfo() {
+  const gy = surfaceHeight(Math.floor(player.x), Math.floor(player.z));
+  const biome = biomeAt(Math.floor(player.x), Math.floor(player.z));
+  const bname = { plains: '平原', forest: '森林', desert: '沙漠', snow: '雪原' }[biome];
+  let line = `<div>坐标 <b>${player.x.toFixed(1)} ${player.y.toFixed(1)} ${player.z.toFixed(1)}</b></div>`;
+  line += `<div>地表 <b>${gy}</b> &middot; 群系 <b>${bname}</b> &middot; 视距 <b>${renderDist}</b></div>`;
+  line += `<div>FPS <b>${fps}</b> &middot; 区块 <b>${chunks.size}</b> &middot; 待建 <b>${pendingData.length + pendingMesh.length}</b></div>`;
+  if (target) line += `<div>指向 <b>${BLOCKS[target.id].name}</b> (${target.x} ${target.y} ${target.z})</div>`;
+  line += `<div style="margin-top:6px;opacity:.8">${player.fly ? '飞行模式' : (player.onGround ? '着地' : '空中')} &middot; 手持 <b>${BLOCKS[HOTBAR[player.sel]].name}</b></div>`;
+  infoEl.innerHTML = line;
+}
+
+let bootDone = false;
+function loop() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  fpsT += dt; fpsN++;
+  if (fpsT > 0.5) { fps = Math.round(fpsN / fpsT); fpsT = 0; fpsN = 0; }
+
+  update(dt);
+  updateWorld(player.x, player.z);
+  pump(9);
+  stepParts(dt);
+  updateInfo();
+
+  renderer.render(scene, camera);
+  if (!bootDone) { bootDone = true; hideLoading(); }
+  requestAnimationFrame(loop);
+}
+
+function hideLoading() {
+  const l = document.getElementById('loading');
+  setTimeout(() => { l.classList.add('gone'); setTimeout(() => l.remove(), 600); }, 260);
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', onResize);
+
+try {
+  spawnPlayer();
+  updateWorld(player.x, player.z);
+  // pre-generate a small core so the player never falls through at spawn
+  for (let i = 0; i < 24 && pendingData.length; i++) { ensureData(pendingData[0][0], pendingData[0][1]); pendingData.shift(); }
+  for (const [k, c] of chunks) if (c.data) meshChunk(c);
+  onResize();
+  loop();
+} catch (err) {
+  document.getElementById('lerr').textContent = '启动失败：' + (err && err.message || err) + '（需要支持 WebGL2 的浏览器）';
+  console.error(err);
+}
+</script>
+</body>
+</html>
