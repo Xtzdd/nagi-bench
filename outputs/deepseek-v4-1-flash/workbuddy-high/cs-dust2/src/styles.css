@@ -1,0 +1,399 @@
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0a0c0f;
+}
+
+body {
+  font: 13px/1.5 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  color: #eaf1f8;
+  user-select: none;
+}
+
+.app {
+  position: fixed;
+  inset: 0;
+}
+
+canvas.stage {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.panel {
+  position: absolute;
+  background: rgba(8, 12, 18, 0.62);
+  border: 1px solid rgba(150, 190, 230, 0.16);
+  border-radius: 8px;
+  backdrop-filter: blur(6px);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+/* 顶部比分 */
+.scoreboard {
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 7px 16px;
+}
+
+.scoreboard .team {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.scoreboard .team.ct {
+  color: #8fc4ff;
+}
+
+.scoreboard .team.t {
+  color: #ffcf8f;
+}
+
+.scoreboard .num {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.scoreboard .timer {
+  min-width: 62px;
+  text-align: center;
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+  color: #dfe9f4;
+}
+
+.scoreboard .timer.bomb {
+  color: #ff8a6a;
+}
+
+.badge {
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  background: rgba(255, 210, 130, 0.16);
+  border: 1px solid rgba(255, 210, 130, 0.4);
+  color: #ffd79a;
+}
+
+/* 生命 / 弹药 */
+.vitals {
+  left: 18px;
+  bottom: 18px;
+  padding: 10px 14px;
+  min-width: 178px;
+}
+
+.vitals .row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vitals .k {
+  color: #8fb3d0;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.vitals .v {
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ammo {
+  right: 18px;
+  bottom: 18px;
+  padding: 10px 14px;
+  min-width: 200px;
+  text-align: right;
+}
+
+.ammo .weapon {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: #cfe0f0;
+}
+
+.ammo .counts {
+  font-size: 27px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ammo .counts small {
+  font-size: 15px;
+  color: #8fb3d0;
+}
+
+.ammo .slots {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.ammo .slot {
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-size: 10px;
+  border: 1px solid rgba(150, 190, 230, 0.22);
+  color: #9fb6cb;
+}
+
+.ammo .slot.on {
+  border-color: #ffd479;
+  color: #ffe6b0;
+  background: rgba(255, 212, 121, 0.14);
+}
+
+/* 准星 */
+.crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.crosshair i {
+  position: absolute;
+  background: #eaf7ff;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+}
+
+/* 击杀播报 */
+.killfeed {
+  position: absolute;
+  right: 18px;
+  top: 68px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-end;
+}
+
+.killfeed .item {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(8, 12, 18, 0.66);
+  border: 1px solid rgba(150, 190, 230, 0.14);
+}
+
+.killfeed .ct {
+  color: #8fc4ff;
+}
+
+.killfeed .t {
+  color: #ffcf8f;
+}
+
+.killfeed .hs {
+  color: #ff8a6a;
+}
+
+/* 中央提示 */
+.center-msg {
+  position: absolute;
+  left: 50%;
+  top: 27%;
+  transform: translateX(-50%);
+  padding: 7px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  background: rgba(8, 12, 18, 0.6);
+  border: 1px solid rgba(150, 190, 230, 0.16);
+  white-space: nowrap;
+}
+
+/* 小地图 */
+.minimap {
+  position: absolute;
+  left: 18px;
+  top: 18px;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(6, 10, 15, 0.66);
+  border: 1px solid rgba(150, 190, 230, 0.16);
+}
+
+.minimap canvas {
+  display: block;
+  border-radius: 5px;
+}
+
+.minimap .caption {
+  margin-top: 5px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #8fb3d0;
+  text-align: center;
+}
+
+/* 进度条 */
+.progress {
+  position: absolute;
+  left: 50%;
+  bottom: 122px;
+  transform: translateX(-50%);
+  width: 240px;
+}
+
+.progress .label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-align: center;
+  margin-bottom: 5px;
+  color: #ffd79a;
+}
+
+.progress .bar {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.progress .bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #ffb15c, #ffe6a8);
+}
+
+/* AWP 瞄具 */
+.scope {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0) 27%, rgba(0, 0, 0, 0.97) 30%);
+}
+
+.scope::before,
+.scope::after {
+  content: "";
+  position: absolute;
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.scope::before {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.scope::after {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+/* 菜单 */
+.menu {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(120% 90% at 50% 30%, rgba(22, 34, 50, 0.72), rgba(4, 6, 10, 0.94));
+  pointer-events: auto;
+}
+
+.menu .card {
+  max-width: 660px;
+  padding: 26px 32px;
+  border-radius: 14px;
+  text-align: center;
+  background: rgba(10, 15, 22, 0.85);
+  border: 1px solid rgba(150, 190, 230, 0.2);
+}
+
+.menu h1 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  letter-spacing: 0.1em;
+}
+
+.menu h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  color: #ffd79a;
+}
+
+.menu p {
+  margin: 6px 0;
+  color: #a9c2d8;
+}
+
+.menu kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 0 1px;
+  border-radius: 4px;
+  font: 11px/1.6 ui-monospace, monospace;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.menu button {
+  margin-top: 16px;
+  font: inherit;
+  font-size: 14px;
+  padding: 10px 26px;
+  border-radius: 9px;
+  color: #0c1118;
+  background: linear-gradient(180deg, #ffe6a8, #ffcf7a);
+  border: none;
+  cursor: pointer;
+}
+
+.menu .score {
+  display: flex;
+  justify-content: center;
+  gap: 26px;
+  margin: 14px 0 6px;
+  font-size: 15px;
+}
+
+.menu .score b {
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.danger {
+  color: #ff8a6a;
+}
+
+.spectate-note {
+  position: absolute;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: #9fb6cb;
+  letter-spacing: 0.06em;
+}
