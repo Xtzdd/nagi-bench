@@ -1,0 +1,45 @@
+{
+  "label": "ERNIE 4.5",
+  "vendor": "Baidu",
+  "harness": "Wenxin Work Mode",
+  "effort": "Auto",
+  "artifactDir": "ernie-4-5/wenxin-web-work",
+  "order": 90,
+  "runs": {
+    "mythos-craft": {
+      "note": {
+        "zh": "在文心智能体工作模式下以 ERNIE 4.5（自动档位）一次生成，未做人工修改。使用 Three.js (CDN ESM) 自写体素引擎与柏林噪声地形，包含 WASD 移动、指针锁定视角、左键破坏/右键放置方块、快捷栏切换方块，内建奥林匹斯宙斯金像神庙、浮空水晶岛、巨龙骨架废墟、黑曜石传送门等神话幻想建筑。",
+        "en": "One-shot by ERNIE 4.5 (Auto effort) in Wenxin Work Mode, unmodified. Built a self-contained Three.js (CDN ESM) voxel engine with Perlin-noise terrain, WASD movement, pointer-lock look, left-click break / right-click place block, hotbar switching, plus mythological set-pieces including an Olympus temple with gold Zeus statue, a floating crystal island, a dragon skeleton ruin and an obsidian portal."
+      },
+      "contributor": "Xtzdd"
+    },
+    "pelican-cycling": {
+      "note": {
+        "zh": "在文心智能体工作模式下以 ERNIE 4.5（自动档位）一次生成，未做人工修改。纯 SVG 矢量插画，画面为夕阳海边骑复古自行车的鹈鹕，包含天空渐变、夕阳、云朵、远处灯塔小岛、海面阳光反射、海鸥、沙滩贝壳、车轮辐条、金属车架、鹈鹕羽毛细节与喉囊，使用 SVG 渐变、滤镜和轻微线条装饰表现运动感。",
+        "en": "One-shot by ERNIE 4.5 (Auto effort) in Wenxin Work Mode, unmodified. A pure SVG vector illustration of a pelican riding a vintage bicycle at a sunset seaside, featuring sky gradient, setting sun, clouds, distant lighthouse island, sun reflection on the sea, seagulls, beach shells, wheel spokes, metallic frame and detailed pelican feathers / throat pouch, using SVG gradients, filters and subtle motion lines."
+      },
+      "contributor": "Xtzdd"
+    },
+    "skeleton-watch": {
+      "note": {
+        "zh": "在文心智能体工作模式下以 ERNIE 4.5（自动档位）一次生成，未做人工修改。使用 Three.js (CDN ESM) + OrbitControls 构建镂空机械表，包含可见的主发条盒、中心轮/三轮/四轮/擒纵轮齿轮系、摆轮带游丝、擒纵叉（含两枚红宝石卡瓦）、多块雕花夹板与 25 枚红宝石轴承，可旋转缩放、切换爆炸视图与夜光模式、悬停高亮零件并在右侧面板显示中文说明，指针与齿轮保持正确转速动画。",
+        "en": "One-shot by ERNIE 4.5 (Auto effort) in Wenxin Work Mode, unmodified. Built an interactive skeleton mechanical watch with Three.js (CDN ESM) and OrbitControls, including visible mainspring barrel, center/third/fourth/escape-wheel gear train, balance wheel with hairspring, pallet fork with two ruby pallets, multiple engraved bridges and 25 ruby bearings. Supports orbit rotation / zoom, exploded view toggle, lume toggle, hover highlight with Chinese part descriptions on the side panel, and correctly-geared hand / gear animations."
+      },
+      "contributor": "Xtzdd"
+    },
+    "cs-dust2": {
+      "note": {
+        "zh": "在文心智能体工作模式下以 ERNIE 4.5（自动档位）一次生成，未做人工修改。使用 React + TypeScript + three.js，按规范仅交付 src/ 目录。在代码中以几何体程序化构建 Dust2 核心区域（T/CT 出生点、A大、A点、中门、B洞外墙、木箱、跳板），WASD+Shift 移动、鼠标视角、点击锁定指针后左键开火，程序化方块枪械模型，Web Audio 合成枪声与脚步声，HUD 显示血量/弹药/比分/准星，无任何外部资产依赖。",
+        "en": "One-shot by ERNIE 4.5 (Auto effort) in Wenxin Work Mode, unmodified. React + TypeScript + three.js; only the src/ tree is submitted per repo convention. Procedurally builds Dust2's core zones (T/CT spawns, Long A, A site, mid doors, B tunnel exterior, crates, ramp) from primitives; supports WASD+Shift movement, mouse look, pointer-lock shooting on left click, a procedural voxel gun model, Web Audio gunshot / footstep synthesis, and a HUD with HP/ammo/score/crosshair. No external assets."
+      },
+      "contributor": "Xtzdd"
+    },
+    "beihai-meteorite": {
+      "note": {
+        "zh": "在文心智能体工作模式下以 ERNIE 4.5（自动档位）一次生成，未做人工修改。使用 React + TypeScript + three.js，按规范仅交付 src/ 目录。将《三体》中章北海陨石子弹段落改编为约 90 秒体素风格 3D 短片：太空星空、方块人章北海、唐号航母、地下车库车床场景、三块旋转铁陨石、步枪发射三发陨石子弹、线条红色轨迹、三位目标宇航员倒下、章北海望向深空；全程自动运镜与中英字幕，Web Audio 可扩展但当前仅以视觉叙事，总时长严格控制在 6 分钟以内。",
+        "en": "One-shot by ERNIE 4.5 (Auto effort) in Wenxin Work Mode, unmodified. React + TypeScript + three.js; only src/ submitted per repo convention. Adapts the Zhang Beihai meteorite-bullet passage from \"The Three-Body Problem\" into a ~90-second voxel-styled 3D short film with starfield, block-avatar Zhang Beihai, the Tang carrier, an underground garage / lathe scene, three spinning iron meteorites, a rifle firing three meteorite bullets as red line trails, three target astronauts falling, and Zhang Beihai gazing into deep space; auto camera choreography and bilingual subtitles throughout, total runtime well within the 6-minute cap."
+      },
+      "contributor": "Xtzdd"
+    }
+  }
+}
