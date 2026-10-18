@@ -1,0 +1,106 @@
+.film-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  overflow: hidden;
+}
+
+.film-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.subtitle-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 9vh;
+  transform: translateX(-50%);
+  max-width: 78%;
+  padding: 14px 28px;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 6px;
+  color: #f2f2f2;
+  font-size: 22px;
+  letter-spacing: 1px;
+  line-height: 1.5;
+  text-align: center;
+  pointer-events: none;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+.subtitle-bar .speaker {
+  color: #9ecbff;
+  margin-right: 6px;
+}
+
+.progress-wrap {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 4px;
+  background: rgba(255,255,255,0.15);
+}
+.progress-fill {
+  height: 100%;
+  background: #c9d4e3;
+  width: 0%;
+  transition: width 0.1s linear;
+}
+
+.start-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #ddd;
+  z-index: 10;
+  cursor: pointer;
+}
+.start-overlay h1 {
+  font-size: 42px;
+  letter-spacing: 8px;
+  margin: 0 0 14px 0;
+  color: #eee;
+  font-weight: 300;
+}
+.start-overlay p {
+  font-size: 16px;
+  color: #999;
+  letter-spacing: 2px;
+  margin-bottom: 40px;
+}
+.start-btn {
+  padding: 12px 36px;
+  border: 1px solid #888;
+  background: transparent;
+  color: #ddd;
+  font-size: 18px;
+  letter-spacing: 4px;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.start-btn:hover {
+  background: #ddd;
+  color: #111;
+}
+
+.end-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e8e8e8;
+  font-size: 38px;
+  letter-spacing: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 2.4s ease;
+}
+.end-card.visible { opacity: 1; }
