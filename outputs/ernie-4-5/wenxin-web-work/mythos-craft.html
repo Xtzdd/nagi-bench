@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<title>神话方块世界 Mythos Craft</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#fff;user-select:none;}
+  canvas{display:block;}
+  #crosshair{position:fixed;left:50%;top:50%;width:20px;height:20px;margin:-10px 0 0 -10px;pointer-events:none;}
+  #crosshair::before,#crosshair::after{content:'';position:absolute;background:#fff;box-shadow:0 0 2px #000;}
+  #crosshair::before{left:9px;top:0;width:2px;height:20px;}
+  #crosshair::after{top:9px;left:0;height:2px;width:20px;}
+  #hud{position:fixed;left:20px;top:20px;font-size:13px;line-height:1.8;text-shadow:1px 1px 2px #000;}
+  #hud .title{font-size:18px;color:#ffd57a;letter-spacing:3px;}
+  #hotbar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);display:flex;gap:6px;padding:6px;background:rgba(0,0,0,0.5);border:2px solid #2a2a2a;border-radius:6px;}
+  .slot{width:52px;height:52px;border:2px solid #555;display:flex;align-items:center;justify-content:center;font-size:11px;flex-direction:column;border-radius:4px;box-sizing:border-box;background:#1a1a1a;}
+  .slot.active{border-color:#ffd57a;box-shadow:0 0 8px #ffd57a inset;}
+  .slot .sw{width:36px;height:36px;border:1px solid #000;}
+  .slot .lb{position:absolute;margin-top:44px;color:#ccc;font-size:10px;}
+  #start{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:10;text-align:center;}
+  #start h1{font-size:42px;color:#ffd57a;letter-spacing:8px;margin:0 0 10px;}
+  #start p{color:#aaa;margin:6px 0;font-size:14px;letter-spacing:2px;}
+  #start .btn{margin-top:26px;padding:12px 36px;background:#7a5a20;color:#fff;border:2px solid #ffd57a;font-size:16px;letter-spacing:3px;cursor:pointer;border-radius:4px;}
+  #start .btn:hover{background:#a17a30;}
+  #coords{position:fixed;right:20px;top:20px;font-size:12px;color:#cde;background:rgba(0,0,0,0.4);padding:6px 10px;border-radius:4px;font-family:monospace;}
+</style>
+</head>
+<body>
+<div id="start">
+  <h1>MYTHOS CRAFT</h1>
+  <p>神话方块世界 · 探索奥林匹斯与浮空岛</p>
+  <p style="color:#888;margin-top:20px;">WASD 移动 · 空格 跳跃 · 鼠标 视角 · 左键 破坏 · 右键 放置</p>
+  <p style="color:#888;">数字键 1-5 切换方块 · Shift 奔跑 · Esc 释放鼠标</p>
+  <button class="btn" id="go">开 始 游 戏</button>
+</div>
+<div id="hud">
+  <div class="title">MYTHOS CRAFT</div>
+  <div id="mode">生存创造 · 探索模式</div>
+</div>
+<div id="coords">X: 0  Y: 0  Z: 0</div>
+<div id="crosshair"></div>
+<div id="hotbar"></div>
+
+<script type="importmap">
+{
+  "imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// ======== Constants ========
+const CHUNK = 16;
+const WORLD_H = 48;
+const BLOCK = {
+  AIR:0,GRASS:1,DIRT:2,STONE:3,SAND:4,WATER:5,WOOD:6,LEAVES:7,
+  MARBLE:8,GOLD:9,RUBY:10,CRYSTAL:11,OBSIDIAN:12,BRICK:13,CLOUD:14
+};
+const BLOCK_NAMES=['','草地','泥土','石头','沙子','水','原木','树叶','大理石','黄金块','红宝石矿','水晶','黑曜石','红砖','云朵'];
+const BLOCK_COLORS={
+  1:0x5ea03a,2:0x8b5a2b,3:0x888d90,4:0xe9d38a,5:0x2a60a8,6:0x6b4525,7:0x2f7a2b,
+  8:0xf0ede6,9:0xf2cc3d,10:0xc82840,11:0x9fe2ff,12:0x1a1025,13:0xa04030,14:0xffffff
+};
+
+// ======== Simple Perlin-like noise (value noise) ========
+const perm = new Uint8Array(512);
+(function(){const p=[];for(let i=0;i<256;i++)p.push(i);for(let i=255;i>0;i--){const j=Math.floor(Math.random()*(i+1));[p[i],p[j]]=[p[j],p[i]];}for(let i=0;i<512;i++)perm[i]=p[i&255];})();
+function fade(t){return t*t*t*(t*(t*6-15)+10);}
+function lerp(a,b,t){return a+(b-a)*t;}
+function grad(hash,x,y){const h=hash&3;const u=h<2?x:y;const v=h<2?y:x;return((h&1)?-u:u)+((h&2)?-v:v);}
+function n2(x,y){
+  const X=Math.floor(x)&255,Y=Math.floor(y)&255;
+  x-=Math.floor(x);y-=Math.floor(y);
+  const u=fade(x),v=fade(y);
+  const A=perm[X]+Y,B=perm[X+1]+Y;
+  return lerp(lerp(grad(perm[A],x,y),grad(perm[B],x-1,y),u),
+             lerp(grad(perm[A+1],x,y-1),grad(perm[B+1],x-1,y-1),u),v);
+}
+function noise(x,y,oct=4){let v=0,a=1,f=1,m=0;for(let i=0;i<oct;i++){v+=a*n2(x*f,y*f);m+=a;a*=0.5;f*=2;}return v/m;}
+
+// ======== World generation ========
+const world = new Map(); // key "x,y,z" -> block id
+function idx(x,y,z){return x+','+y+','+z;}
+function getB(x,y,z){return world.get(idx(x,y,z))||0;}
+function setB(x,y,z,b){const k=idx(x,y,z);if(b===0)world.delete(k);else world.set(k,b);}
+
+const RADIUS = 32; // build in radius around origin
+function generateWorld(){
+  // Base terrain
+  for(let x=-RADIUS;x<=RADIUS;x++) for(let z=-RADIUS;z<=RADIUS;z++){
+    const n = noise(x*0.03,z*0.03,4)*12 + noise(x*0.08,z*0.08,2)*4;
+    const h = Math.floor(18 + n);
+    // Beach/ocean near low areas
+    for(let y=0;y<=h;y++){
+      if(y===0) setB(x,y,z,BLOCK.OBSIDIAN);
+      else if(y<h-3) setB(x,y,z,BLOCK.STONE);
+      else if(h<15 && y>=13 && y<h) setB(x,y,z,BLOCK.SAND);
+      else if(y<h) setB(x,y,z,BLOCK.DIRT);
+      else setB(x,y,z,(h<14)?BLOCK.SAND:BLOCK.GRASS);
+    }
+    // Water fill
+    if(h<14){for(let y=h+1;y<=14;y++)setB(x,y,z,BLOCK.WATER);}
+    // Trees
+    if(h>18 && h<30 && Math.random()<0.02){
+      const th=5+Math.floor(Math.random()*3);
+      for(let i=1;i<=th;i++)setB(x,h+i,z,BLOCK.WOOD);
+      for(let lx=-2;lx<=2;lx++)for(let lz=-2;lz<=2;lz++)for(let ly=th-1;ly<=th+2;ly++){
+        if(Math.abs(lx)+Math.abs(lz)+Math.abs(ly-th)<=3 && (lx||lz||ly!==th)){
+          const nx=x+lx,ny=h+ly,nz=z+lz; if(!getB(nx,ny,nz))setB(nx,ny,nz,BLOCK.LEAVES);
+        }
+      }
+    }
+    // Ruby ore scattered
+    if(h>10 && Math.random()<0.006){
+      setB(x,h-2,z,BLOCK.RUBY);
+    }
+  }
+
+  // ===== Olympus temple on top of a marble mountain =====
+  const ox=0, oz=-20;
+  // Marble mountain
+  for(let x=-8;x<=8;x++)for(let z=-8;z<=8;z++){
+    const d=Math.sqrt(x*x+z*z);
+    const mh=Math.max(0,Math.floor(28-d*1.2));
+    for(let y=20;y<mh+20;y++){
+      setB(ox+x,y,oz+z,y>=mh+18?BLOCK.MARBLE:BLOCK.STONE);
+    }
+    // Top platform
+    if(d<=6) for(let y=0;y<2;y++) setB(ox+x,mh+20+y,oz+z,BLOCK.MARBLE);
+  }
+  // Temple base & columns
+  const tby=42;
+  for(let x=-6;x<=6;x++)for(let z=-10;z<=4;z++){
+    if((x===-6||x===6||z===-10||z===4) && !(x>=-5&&x<=5&&z>=-9&&z<=3))
+      setB(ox+x,tby,oz+z,BLOCK.MARBLE);
+  }
+  // Floor
+  for(let x=-5;x<=5;x++)for(let z=-9;z<=3;z++) setB(ox+x,tby,oz+z,BLOCK.MARBLE);
+  // Columns (Doric peristyle)
+  const cols=[[-5,-10],[-5,-3],[-5,4],[5,-10],[5,-3],[5,4],[-2,-10],[2,-10],[-2,4],[2,4]];
+  cols.forEach(([cx,cz])=>{
+    for(let y=1;y<=8;y++){
+      setB(ox+cx,tby+y,oz+cz,BLOCK.MARBLE);
+      if(y%3===1) setB(ox+cx+1,tby+y,oz+cz,BLOCK.MARBLE);
+    }
+    // Capital
+    setB(ox+cx-1,tby+9,oz+cz-1,BLOCK.MARBLE);setB(ox+cx-1,tby+9,oz+cz+1,BLOCK.MARBLE);
+    setB(ox+cx+1,tby+9,oz+cz-1,BLOCK.MARBLE);setB(ox+cx+1,tby+9,oz+cz+1,BLOCK.MARBLE);
+  });
+  // Pediment (triangular roof)
+  for(let y=0;y<=4;y++){
+    for(let x=-6+y;x<=6-y;x++){
+      setB(ox+x,tby+10+y,oz-10,BLOCK.MARBLE);
+      setB(ox+x,tby+10+y,oz+4,BLOCK.MARBLE);
+    }
+  }
+  // Roof slabs
+  for(let x=-6;x<=6;x++)for(let z=-10;z<=4;z++) setB(ox+x,tby+10,oz+z,BLOCK.MARBLE);
+  // Gold Zeus statue inside (colossus)
+  for(let y=1;y<=12;y++)setB(ox,tby+y,oz-3,y<=2?BLOCK.MARBLE:BLOCK.GOLD);
+  // Head
+  setB(ox,tby+13,oz-3,BLOCK.GOLD);setB(ox-1,tby+13,oz-3,BLOCK.GOLD);setB(ox+1,tby+13,oz-3,BLOCK.GOLD);
+  setB(ox,tby+12,oz-4,BLOCK.GOLD);
+  // Eyes (ruby)
+  setB(ox-1,tby+13,oz-4,BLOCK.RUBY);setB(ox+1,tby+13,oz-4,BLOCK.RUBY);
+
+  // ===== Floating island with crystal =====
+  const fix=20,fiz=10,fiy=35;
+  for(let x=-5;x<=5;x++)for(let z=-5;z<=5;z++){
+    const d=Math.sqrt(x*x+z*z);
+    const islH=Math.max(0,Math.floor(4-d*0.6));
+    for(let y=0;y<islH;y++){
+      setB(fix+x,fiy+y,fiz+z,y===islH-1?BLOCK.GRASS:BLOCK.DIRT);
+      if(y===0 && d<3) setB(fix+x,fiy-1,fiz+z,BLOCK.STONE);
+    }
+    if(d<3) setB(fix+x,fiy-2,fiz+z,BLOCK.STONE);
+  }
+  // Crystal spire
+  for(let y=1;y<=8;y++){
+    const r = y<5?1:0;
+    for(let dx=-r;dx<=r;dx++)for(let dz=-r;dz<=r;dz++){
+      setB(fix+dx,fiy+islHAt(fix+dx,fiz+dz,fiy)+y,fiz+dz,BLOCK.CRYSTAL);
+    }
+  }
+  function islHAt(x,z,base){let d=Math.sqrt((x-fix)*(x-fix)+(z-fiz)*(z-fiz));return Math.max(0,Math.floor(4-d*0.6));}
+
+  // ===== Dragon skeleton on a plateau =====
+  const dx=-22,dz=5,dy=25;
+  // spine
+  for(let i=-6;i<=6;i++){setB(dx,dy+Math.abs(i)*0.3|0,dz+i,BLOCK.BRICK);}
+  // ribs
+  for(let i=-5;i<=5;i+=2){
+    for(let r=1;r<=4;r++){
+      setB(dx-r,dy+1+Math.abs(i)*0.3|0,dz+i,BLOCK.BRICK);
+      setB(dx+r,dy+1+Math.abs(i)*0.3|0,dz+i,BLOCK.BRICK);
+    }
+  }
+  // skull
+  setB(dx,dy,dz-8,BLOCK.BRICK);setB(dx-1,dy,dz-8,BLOCK.BRICK);setB(dx+1,dy,dz-8,BLOCK.BRICK);
+  setB(dx,dy+1,dz-8,BLOCK.BRICK);setB(dx-2,dy,dz-8,BLOCK.RUBY);setB(dx+2,dy,dz-8,BLOCK.RUBY);
+  setB(dx,dy,dz-9,BLOCK.BRICK);setB(dx,dy+1,dz-9,BLOCK.BRICK);
+
+  // ===== Obsidian portal =====
+  const px=-24,pz=-18;
+  for(let y=0;y<5;y++){setB(px,20+y,pz,BLOCK.OBSIDIAN);setB(px,20+y,pz+3,BLOCK.OBSIDIAN);}
+  setB(px,24,pz+1,BLOCK.OBSIDIAN);setB(px,24,pz+2,BLOCK.OBSIDIAN);
+  setB(px,20,pz+1,BLOCK.OBSIDIAN);setB(px,20,pz+2,BLOCK.OBSIDIAN);
+  for(let y=1;y<4;y++){setB(px,20+y,pz+1,BLOCK.CRYSTAL);setB(px,20+y,pz+2,BLOCK.CRYSTAL);}
+}
+
+// ======== Renderer ========
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x87b6e0);
+scene.fog=new THREE.Fog(0x87b6e0,40,100);
+const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,500);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const sun=new THREE.DirectionalLight(0xfff4d8,1.2);
+sun.position.set(30,60,20);scene.add(sun);
+scene.add(new THREE.AmbientLight(0xbcd4ef,0.55));
+const hemi=new THREE.HemisphereLight(0xb0d0f0,0x4a5a30,0.35);scene.add(hemi);
+
+// Clouds
+const cloudMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.7});
+for(let i=0;i<20;i++){
+  const c=new THREE.Group();
+  for(let j=0;j<4;j++){const b=new THREE.Mesh(new THREE.BoxGeometry(4+Math.random()*4,2,3),cloudMat);
+    b.position.set(j*2.5,Math.random()*1,Math.random()*2-1);c.add(b);}
+  c.position.set((Math.random()-0.5)*200,50+Math.random()*15,(Math.random()-0.5)*200);
+  scene.add(c);
+}
+
+// ======== Block instancing ========
+const matCache={};
+function matFor(id,faces){
+  if(id===BLOCK.WATER)return new THREE.MeshLambertMaterial({color:BLOCK_COLORS[id],transparent:true,opacity:0.65});
+  if(id===BLOCK.CRYSTAL)return new THREE.MeshLambertMaterial({color:BLOCK_COLORS[id],transparent:true,opacity:0.75,emissive:0x3388aa,emissiveIntensity:0.4});
+  if(id===BLOCK.LEAVES)return new THREE.MeshLambertMaterial({color:BLOCK_COLORS[id],transparent:true,opacity:0.9});
+  if(id===BLOCK.GOLD)return new THREE.MeshStandardMaterial({color:BLOCK_COLORS[id],metalness:0.9,roughness:0.25,emissive:0x443300,emissiveIntensity:0.3});
+  if(id===BLOCK.MARBLE)return new THREE.MeshStandardMaterial({color:BLOCK_COLORS[id],metalness:0.1,roughness:0.5});
+  return new THREE.MeshLambertMaterial({color:BLOCK_COLORS[id]});
+}
+
+const boxGeo = new THREE.BoxGeometry(1,1,1);
+const blockGroup = new THREE.Group(); scene.add(blockGroup);
+const meshMap = new Map(); // key -> mesh
+function rebuildMeshes(){
+  // Clear old
+  while(blockGroup.children.length)blockGroup.remove(blockGroup.children[0]);
+  meshMap.clear();
+  // Group faces by material and expose only visible faces (culling)
+  const faceGeo = new THREE.BoxGeometry(1,1,1);
+  // Simple approach: one mesh per visible block
+  const matPool={};
+  let count=0;
+  world.forEach((bid,key)=>{
+    if(bid===BLOCK.AIR)return;
+    const[x,y,z]=key.split(',').map(Number);
+    // Don't draw fully enclosed blocks (simple culling)
+    const neighbors=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+    let exposed=false;
+    for(const[dx,dy,dz] of neighbors)if(!getB(x+dx,y+dy,z+dz)||getB(x+dx,y+dy,z+dz)===BLOCK.WATER||getB(x+dx,y+dy,z+dz)===BLOCK.LEAVES){exposed=true;break;}
+    if(!exposed)return;
+    let m=matPool[bid];
+    if(!m){m=matFor(bid);matPool[bid]=m;}
+    const mesh=new THREE.Mesh(boxGeo,m);
+    mesh.position.set(x+0.5,y+0.5,z+0.5);
+    mesh.userData={x,y,z,bid};
+    blockGroup.add(mesh);
+    meshMap.set(key,mesh);
+    count++;
+  });
+}
+
+// ======== Player & controls ========
+const player={pos:new THREE.Vector3(0,40,25),vel:new THREE.Vector3(),yaw:0,pitch:-0.2,onGround:false,sprint:false};
+const keys={};
+addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='ShiftLeft')player.sprint=true;
+  const n=parseInt(e.key);if(n>=1&&n<=5)selectSlot(n-1);
+});
+addEventListener('keyup',e=>{keys[e.code]=false;if(e.code==='ShiftLeft')player.sprint=false;});
+
+let locked=false;
+renderer.domElement.addEventListener('click',()=>{if(started)renderer.domElement.requestPointerLock();});
+document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===renderer.domElement;});
+addEventListener('mousemove',e=>{
+  if(!locked)return;
+  player.yaw -= e.movementX*0.0025;
+  player.pitch -= e.movementY*0.0025;
+  player.pitch = Math.max(-Math.PI/2+0.05,Math.min(Math.PI/2-0.05,player.pitch));
+});
+
+// Raycast for block interaction
+const raycaster=new THREE.Raycaster();
+function getTargetBlock(){
+  raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
+  const list=[...blockGroup.children].filter(m=>m.userData.bid!==BLOCK.WATER);
+  const hits=raycaster.intersectObjects(list,false);
+  if(hits.length&&hits[0].distance<6)return hits[0];
+  return null;
+}
+function getPlacePos(hit){
+  const n=hit.face.normal;
+  const b=hit.object.userData;
+  return {x:b.x+Math.round(n.x),y:b.y+Math.round(n.y),z:b.z+Math.round(n.z)};
+}
+addEventListener('mousedown',e=>{
+  if(!locked)return;
+  const hit=getTargetBlock();if(!hit)return;
+  const b=hit.object.userData;
+  if(e.button===0){
+    setB(b.x,b.y,b.z,BLOCK.AIR);
+    rebuildMeshes();
+  } else if(e.button===2){
+    const p=getPlacePos(hit);
+    // Don't place inside player
+    const px=Math.floor(player.pos.x),py=Math.floor(player.pos.y),pz=Math.floor(player.pos.z);
+    if(p.x===px&&p.z===pz&&(p.y===py||p.y===py-1||p.y===py+1))return;
+    setB(p.x,p.y,p.z,selectedBlock);
+    rebuildMeshes();
+  }
+});
+addEventListener('contextmenu',e=>e.preventDefault());
+
+// Hotbar
+const hotbarBlocks=[BLOCK.GRASS,BLOCK.DIRT,BLOCK.STONE,BLOCK.MARBLE,BLOCK.CRYSTAL,BLOCK.GOLD,BLOCK.WOOD,BLOCK.BRICK];
+let selectedBlock=hotbarBlocks[0],selectedIdx=0;
+const hotbar=document.getElementById('hotbar');
+hotbarBlocks.forEach((bid,i)=>{
+  const s=document.createElement('div');s.className='slot'+(i===0?' active':'');
+  s.innerHTML=`<div class="sw" style="background:#${BLOCK_COLORS[bid].toString(16).padStart(6,'0')}"></div>`;
+  s.title=BLOCK_NAMES[bid];s.dataset.i=i;
+  s.onclick=()=>selectSlot(i);
+  hotbar.appendChild(s);
+});
+function selectSlot(i){
+  selectedIdx=i;selectedBlock=hotbarBlocks[i];
+  [...hotbar.children].forEach((c,j)=>c.classList.toggle('active',j===i));
+}
+
+// Collision
+function collides(x,y,z){
+  for(let dx=0;dx<=1;dx++)for(let dy=0;dy<=2;dy++)for(let dz=0;dz<=1;dz++){
+    const bx=Math.floor(x-0.3+dx*0.6),by=Math.floor(y-1.5+dy),bz=Math.floor(z-0.3+dz*0.6);
+    const b=getB(bx,by,bz);
+    if(b&&b!==BLOCK.WATER)return true;
+  }
+  return false;
+}
+
+let started=false;
+document.getElementById('go').onclick=()=>{
+  document.getElementById('start').style.display='none';
+  started=true;generateWorld();rebuildMeshes();
+  renderer.domElement.requestPointerLock();
+};
+
+const coords=document.getElementById('coords');
+let lastT=0;
+function loop(t){
+  requestAnimationFrame(loop);
+  const dt=Math.min(0.05,(t-lastT)/1000||0.016);lastT=t;
+  if(!started){renderer.render(scene,camera);return;}
+
+  // Movement
+  const sp = player.sprint?8:5;
+  const fwd=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw));
+  const rt=new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw));
+  const move=new THREE.Vector3();
+  if(keys['KeyW'])move.add(fwd);if(keys['KeyS'])move.sub(fwd);
+  if(keys['KeyD'])move.add(rt);if(keys['KeyA'])move.sub(rt);
+  if(move.lengthSq()>0)move.normalize().multiplyScalar(sp);
+  player.vel.x=move.x;player.vel.z=move.z;
+  player.vel.y -= 22*dt; // gravity
+  if(keys['Space']&&player.onGround){player.vel.y=9;player.onGround=false;}
+
+  // Axis-separated collision
+  const np=player.pos.clone();
+  np.x += player.vel.x*dt;
+  if(collides(np.x,np.y,np.z)){np.x=player.pos.x;player.vel.x=0;}
+  np.z += player.vel.z*dt;
+  if(collides(np.x,np.y,np.z)){np.z=player.pos.z;player.vel.z=0;}
+  np.y += player.vel.y*dt;
+  if(collides(np.x,np.y,np.z)){
+    if(player.vel.y<0)player.onGround=true;
+    np.y=player.pos.y;player.vel.y=0;
+  } else player.onGround=false;
+  player.pos.copy(np);
+
+  camera.position.set(player.pos.x,player.pos.y,player.pos.z);
+  camera.rotation.order='YXZ';
+  camera.rotation.y=player.yaw;
+  camera.rotation.x=player.pitch;
+
+  // Highlight target
+  const hit=getTargetBlock();
+  if(hit){
+    hit.object.material.emissive=new THREE.Color(0xffffff);
+    hit.object.material.emissiveIntensity=0.3;
+  }
+  blockGroup.children.forEach(m=>{if(m!==hit.object&&m.material.emissive){m.material.emissiveIntensity=0;}});
+
+  coords.textContent = `X: ${player.pos.x.toFixed(1)}  Y: ${player.pos.y.toFixed(1)}  Z: ${player.pos.z.toFixed(1)}`;
+  renderer.render(scene,camera);
+}
+requestAnimationFrame(loop);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script>
+</body>
+</html>
