@@ -1,0 +1,45 @@
+{
+  "label": "ERNIE 4.5",
+  "vendor": "Baidu",
+  "harness": "Wenxin Work Task Mode",
+  "effort": "Professional Skill",
+  "artifactDir": "ernie-4-5/wenxin-work-task",
+  "order": 95,
+  "runs": {
+    "mythos-craft": {
+      "note": {
+        "zh": "在文心（Wenxin）网页版「工作任务」模式下以专业技能档位一次生成。禁用所有插件与扩展技能，仅使用基础 Canvas/Three.js 能力；单 HTML 文件内联手写柏林噪声、Chunk 分块面剔除、AABB 碰撞、DDA 射线、14 种 Canvas 程序化纹理；包含奥林匹斯天空神殿、龙神骨架水晶阵、黑曜石火山、发光蘑菇林、海底亚特兰蒂斯残迹五处神话奇观，直接双击即可运行，未作修改。",
+        "en": "One-shot generation in Wenxin (Baidu) web app under Work Task mode with professional skill effort. All plugins and extra skills disabled; single self-contained HTML with hand-written Perlin noise, chunked face-culling, AABB collision, DDA raycast, and 14 procedurally canvas-drawn block textures. Includes five mythic landmarks (floating Olympus temple, dragon-bone crystal ring, obsidian volcano, glowing mushroom forest, underwater Atlantis ruin) and runs by double-click with no post-editing."
+      },
+      "contributor": "Xtzdd"
+    },
+    "pelican-cycling": {
+      "note": {
+        "zh": "在文心（Wenxin）网页版「工作任务」模式下以专业技能档位一次生成。纯静态 SVG，使用 <defs> 定义 16 组线性/径向渐变（天空、夕阳、海面、沙滩、羽毛、喉囊、金属、轮胎等），分 8 层构图（天空、夕阳、云、帆船、海面含波光、沙滩含贝壳石子、小路与芦苇、自行车、鹈鹕）；鹈鹕特征完整（长喙+喉囊+白羽+黑翅尖+蹼脚踩踏板+翅扶车把+车筐小鱼），附克制的 SMIL 动画（车轮旋转、身体随踏板浮动），未作修改。",
+        "en": "One-shot generation in Wenxin web app under Work Task mode with professional skill effort. Pure static SVG with 16 linear/radial gradients defined in <defs> (sky, sunset, sea, sand, feathers, pouch, metal, tires, etc.) and an 8-layer composition (sky, sun, clouds, sailboats, sea with sparkling reflections, beach with shells/pebbles, path with reeds, bicycle, pelican). Pelican features are complete (long bill + pouch + white plumage + black wingtips + webbed feet on pedals + wings on handlebars + fish in the front basket). Tasteful SMIL animation (wheel rotation, body bob with pedals). Unmodified."
+      },
+      "contributor": "Xtzdd"
+    },
+    "skeleton-watch": {
+      "note": {
+        "zh": "在文心（Wenxin）网页版「工作任务」模式下以专业技能档位一次生成。单 HTML 文件使用 Three.js UMD + OrbitControls；机芯按真实传动比联动（主发条盒 72 齿→中心轮→三轮→秒轮→15 齿擒纵轮），摆轮 4Hz 正弦振荡、游丝多圈 TubeGeometry 随摆轮呼吸缩放，锚式擒纵叉 tick 摆动；夹板钌灰 PBR 材质配红宝石轴承；表壳为玫瑰金+精钢+蓝宝石水晶 transmission 材质，含表冠/表耳/六节金属表带/前后表镜；蓝绿夜光指针与时标在暗光中发光；支持拖拽旋转、滚轮缩放、E 键/按钮切换爆炸视图（零件 lerp 分离合拢）、Raycaster 悬停高亮零件并显示中英双语零件名与功能说明；工作室级 envMap + ACES 色调映射 + 软阴影，未作修改。",
+        "en": "One-shot generation in Wenxin web app under Work Task mode with professional skill effort. Single HTML using Three.js UMD with OrbitControls. Movement geartrain runs at real ratios (72T mainspring barrel → center → third → fourth → 15T escape wheel); balance wheel oscillates sinusoidally at 4 Hz with a multi-loop TubeGeometry hairspring that breathes with it; anchor pallet fork ticks with the balance. Ruthenium-grey PBR bridges set with ruby bearings. Rose-gold + steel case with sapphire crystal (MeshPhysicalMaterial transmission), knurled crown, lugs, six-link bracelet. Blue-green lume on hands and indices glows in the dark scene. Supports drag rotation, wheel zoom, E key/button exploded view (parts lerp apart/together), Raycaster hover highlighting with bilingual part name and function panel. Studio envMap + ACES tone mapping + soft shadows. Unmodified."
+      },
+      "contributor": "Xtzdd"
+    },
+    "cs-dust2": {
+      "note": {
+        "zh": "在文心（Wenxin）网页版「工作任务」模式下以专业技能档位一次生成完整 Vite + React 18 + TypeScript + three.js 工程。地图程序化搭建 Dust2 核心区域（T/CT 出生点、A 大、A 点含金属木箱、中门双扇可穿门、猫道、B 洞、B 点含箱子，约 60x40 米），墙体与箱子 AABB 碰撞 + 4 米网格 navmesh + BFS 寻路；角色为类人型方块组（头/躯/双臂/双腿独立 mesh，CT 蓝、T 沙漠黄）并按 hitbox 分区做伤害判定（头部 4 倍）；武器系统含 AK-47/M4A4/AWP/Glock/USP/Deagle/Knife，AWP 右键可开镜（FOV 拉近+黑色遮罩圈+十字线），有后坐力累积、散布衰减、换弹、护甲 50% 减伤；5v5 AI 状态机（patrol→seek→combat→plant/defuse）+ LOS 索敌 + 小随机走位；C4 系统（3 秒下包、40 秒倒计时、5 秒拆包、掉落/拾取、爆炸 AOE）；Web Audio 程序化合成七种武器开火声、换弹咔哒、脚步声（按材质）、AWP 开镜、命中、C4 beep（最后 10 秒加速）、爆炸 rumble、击杀音；HUD 含十字准星、血甲、动态弹药、右上角 killfeed、Canvas 2D 俯视小地图、C4 状态、武器栏、死亡观战切换（1-4 接管队友）、回合结束横幅；支持手枪局规则，未作修改。",
+        "en": "One-shot generation of a complete Vite + React 18 + TypeScript + three.js project in Wenxin web app under Work Task mode with professional skill effort. Procedural Dust2 layout (~60x40m) covering T/CT spawns, Long A, A site with metal/wood crates, passable Mid double doors, Catwalk, B tunnels, B site with crates; AABB wall/crate collision plus a 4 m navmesh with BFS pathing. Humanoid characters built from separate block meshes (head, torso, two arms, two legs, CT blue / T desert yellow) with per-zone hitbox damage (head 4x). Weapon system includes AK-47, M4A4, AWP, Glock, USP, Deagle, Knife; AWP supports right-click scope (FOV zoom + black circular mask + crosshair); recoil accumulates, spread decays, armor gives 50% damage reduction. 5v5 AI runs a state machine (patrol → seek → combat → plant/defuse) with LOS checks and small aim/strafe variance. C4 logic: random carrier, drop/pickup, 3 s plant, 40 s fuse, 5 s defuse, explosion AOE. Web Audio synthesizes distinct gunfire per weapon, reload clicks, material-varying footsteps, AWP scope-in, hit thud, accelerating C4 beep (last 10 s), explosion rumble, kill ding. HUD covers crosshair, HP/armor, dynamic ammo, top-right killfeed, 2D canvas minimap, C4 status, weapon slots, death overlay with teammate spectator switch (1-4) and round-end banner. Pistol-round rules supported. Unmodified."
+      },
+      "contributor": "Xtzdd"
+    },
+    "beihai-meteorite": {
+      "note": {
+        "zh": "在文心（Wenxin）网页版「工作任务」模式下以专业技能档位一次生成完整 Vite + React 18 + TypeScript + three.js 体素短片，改编自《三体II：黑暗森林》章北海暗杀「老航天」片段。全片约 115 秒（7 个场景、15 个电影镜头），含片头「点击开始」遮罩、底部居中 `【说话者】文本` 字幕、进度条、片尾「自然选择号，前进四。」；体素美术语言，人物/陨石子弹/枪械/车间/空间站走廊/观察窗（含方块地球+星空）均由几何体组装；15 个 shot 使用 position lerp + quaternion slerp + fov 缓动实现推轨、特写、过肩、子弹慢动作跟随、拉远到地球等运镜；11 条 voice cue 严格按 id/kind/speaker/text/delivery/start/end 七字段结构化；Web Audio 程序化合成车间机床/打磨火花、装弹咔哒、航天服呼吸+心跳、无线电载波、真空射击以 suit 内低频闷震替代外枪声、击中闷响、泄压、警报、低频 drone 背景，地下室声音经 delay 反馈形成混响、真空中无外部枪声以尊重物理；无任何外部模型/贴图/音频；点击开始按钮解锁 AudioContext 以符合浏览器策略，未作修改。",
+        "en": "One-shot generation of a complete Vite + React 18 + TypeScript + three.js voxel short in Wenxin web app under Work Task mode with professional skill effort, adapting Zhang Beihai's assassination of the old-spaceflight establishment from The Three-Body Problem: The Dark Forest. Total runtime ~115 s across 7 scenes / 15 cinematic shots, with a click-to-start overlay, bottom-centered `【Speaker】Text` subtitles, progress bar, and the ending card 'Natural Selection, ahead four.' Voxel aesthetic: characters, meteorite bullets, guns, workshop, station corridor and observation deck (with block-built Earth and starfield) are all assembled from primitives. The 15 shots use position lerp, quaternion slerp and FOV easing for dolly, close-up, over-shoulder, slow-motion bullet follow and pull-back-to-Earth camera work. Eleven voice cues follow the required seven-field schema (id/kind/speaker/text/delivery/start/end). Web Audio procedurally synthesizes workshop lathe/grinding with sparks, reload clicks, spacesuit breathing with heartbeat, radio carrier, vacuum gunshots represented as suit-conducted sub thumps (no external muzzle blast, respecting vacuum acoustics), impact thuds, decompression, alarm and a low-frequency drone; basement audio passes through a delay-feedback reverb. No external models, textures or audio. Click-to-start unlocks AudioContext per browser policy. Unmodified."
+      },
+      "contributor": "Xtzdd"
+    }
+  }
+}
