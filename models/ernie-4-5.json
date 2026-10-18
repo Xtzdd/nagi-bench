@@ -1,0 +1,54 @@
+{
+  "label": "ERNIE 4.5",
+  "vendor": "Baidu",
+  "harness": "Wenxin Web",
+  "effort": "Work Task",
+  "artifactDir": "ernie-4-5/wenxin-web-work",
+  "order": 5.0,
+  "runs": {
+    "mythos-craft": {
+      "note": {
+        "zh": "在文心网页版工作任务模式（专业技能档位）一次生成，未做任何代码修改。使用 Three.js 实现体素世界：自写 Perlin 噪声生成地形、AABB 碰撞、体素 DDA 射线拾取与方块放置/破坏、InstancedMesh 渲染，并程序化布置了三类神话奇观——太阳神黄金顶大理石神庙、黑曜石门环、浮空水晶岛。运行时动态加载玩家周围区块，使用 Canvas 程序化生成 16×16 像素方块贴图。",
+        "en": "One-shot in the Wenxin web app on Work Task mode (Pro skill tier), no code edits. Three.js voxel world with a from-scratch Perlin-noise terrain, AABB collision, voxel-DDA raycasting for block pick/place/break, InstancedMesh rendering, and three procedural mythic landmarks placed at generation time: a sun-god temple with a gold-tipped marble roof, an obsidian portal ring, and a floating isle with a gold crystal spire. Chunks around the player are streamed in at runtime; block textures are 16×16 pixel canvases generated procedurally."
+      },
+      "contributor": "Xtzdd"
+    },
+    "pelican-cycling": {
+      "note": {
+        "zh": "在文心网页版工作任务模式一次生成，未做任何代码修改。纯 SVG（无外部资源、无 JS），夕阳海边一只戴着海员小白帽、脖子飘红围巾、车把挂着鱼篮的鹈鹕骑一辆老式 cruiser 自行车：多层径向/线性渐变表现天空、海水、落日反光、车身金属和鹈鹕羽毛，喙下喉囊与蹼足单独绘制；仅在太阳上使用了极克制的 SMIL 呼吸动画以保持静态插画观感。",
+        "en": "One-shot in the Wenxin web app on Work Task mode, no code edits. Pure SVG (no external assets, no JS) of a pelican in a white sailor cap with a red scarf and a fish basket on the handlebars, riding a step-through cruiser bicycle along a sunset beach. Multiple radial/linear gradients render sky, sea, sun reflection, frame chrome, and plumage; the gular pouch and webbed feet are drawn separately. Only the sun disc uses a subtle SMIL opacity pulse to keep the illustration essentially static."
+      },
+      "contributor": "Xtzdd"
+    },
+    "skeleton-watch": {
+      "note": {
+        "zh": "在文心网页版工作任务模式一次生成，未做任何代码修改。Three.js 镂空陀飞轮腕表：程序化齿轮齿形（ExtrudeGeometry 生成带齿顶/齿谷的齿轮盘）、玫瑰金主机板通过 Shape 切出六处镂空、摆轮 4Hz 振荡（每小时 28,800 vph）、擒纵叉/游丝（螺旋 BufferGeometry）、31 颗红宝石轴承；提供正面/背面/爆炸视图/夜光模式四种交互、OrbitControls 拖拽旋转缩放、悬停零件弹出中英双语零件说明面板；蓝宝石表镜使用带 transmission/clearcoat 的 MeshPhysicalMaterial。",
+        "en": "One-shot in the Wenxin web app on Work Task mode, no code edits. Three.js skeleton tourbillon wristwatch: procedural gear teeth (ExtrudeGeometry with addendum/dedendum shaped via Shape path), rose-gold mainplate skeletonized by cutting six circular openings, a balance wheel oscillating at 4 Hz (28,800 vph), pallet lever and hairspring (spiral built from BufferGeometry points), and 31 ruby bearings. Four interaction modes are provided: front view, caseback view, exploded view, and lume mode; OrbitControls handle drag-rotate/zoom, and raycasted hover reveals bilingual part-info panels. The sapphire crystal uses MeshPhysicalMaterial with transmission and clearcoat."
+      },
+      "contributor": "Xtzdd"
+    },
+    "turf-war": {
+      "note": {
+        "zh": "未提交产出（agent 类 case 由维护者在隔离 runner 上运行，社区贡献不开放 artifact PR，详见 AGENTS.md）。",
+        "en": "No artifact submitted (agent cases are run by maintainers on an isolated runner and are not open to artifact PRs per AGENTS.md)."
+      },
+      "contributor": "Xtzdd"
+    },
+    "cs-dust2": {
+      "file": "cs-dust2",
+      "note": {
+        "zh": "在文心网页版工作任务模式一次生成，未做任何代码修改。完整 React 18 + TypeScript + Vite + three.js 项目，独立 game.ts 引擎模块实现：Dust2-lite 方块地图（T/CT 出生点、中门、B 隧道、A 大、AB 包点、箱子掩体）、轴分离 AABB 碰撞/重力/跳跃、射线 vs AABB 判定命中（区分头/胸/腹/腿区）、7 种武器（刀/Glock/USP/Deagle/AK/M4/AWP，含伤害/射速/弹匣/穿甲/开镜参数）、换弹/开火冷却/后坐力/散射、5v5 状态机 AI（索敌/视线检测/点射/压枪式扫射/守点/下包/拆弹/队友阵亡后切换观察）、C4 定时/安放/拆包机制、Canvas 2D 小地图、击杀 feed/HUD/血量护甲条、AWP 右键瞄准镜视野切换、Web Audio API 程序化合成枪声/换弹/脚步/爆炸/C4 警报等音效。",
+        "en": "One-shot in the Wenxin web app on Work Task mode, no code edits. A complete React 18 + TypeScript + Vite + three.js project. A standalone game.ts engine module implements: a Dust2-lite block map (T/CT spawns, mid doors, B tunnels, A long, A/B bomb sites, crate cover), axis-separated AABB collision with gravity/jump, ray-vs-AABB hit detection that distinguishes head/chest/stomach/leg zones, seven weapons (knife/Glock/USP/Deagle/AK/M4/AWP with per-weapon damage/fire-rate/magazine/armor-pen/scope parameters), reload/fire-cooldown/recoil/spread, a 5v5 state-machine AI (LOS checks, burst/tap fire, site-hold, plant/defuse, death-cam switch to teammates), C4 timer/plant/defuse, a Canvas 2D minimap, kill feed / HUD / HP & armor bars, right-click AWP scope, and Web Audio API synthesized gunshots/reloads/footsteps/explosions/C4 beeps."
+      },
+      "contributor": "Xtzdd"
+    },
+    "beihai-meteorite": {
+      "file": "beihai-meteorite",
+      "note": {
+        "zh": "在文心网页版工作任务模式一次生成，未做任何代码修改。基于 React + three.js 的体素 3D 短片改编自《三体 II·黑暗森林》章北海暗杀老航天段落，总时长约 3 分 20 秒（硬上限 6 分钟以内）。全程序化体素美术（无任何外部资产/贴图）：宇航员方块人（金色遮光 visor 与普通 visor 区分章北海/目标）、地球（球体+随机绿块大陆+云层）、1500 颗点云星空、地下室工作坊与车床。14 个分镜按时间轴插值相机位置/FOV/焦点，覆盖六幕——车床加工陨石子弹、出舱、瞄准、真空三连发（真空不传导声响，仅航天服内主观闷震与枪焰）、尸体漂远、推进器转场；字幕清单含 21 条配音 cue（每条含 id/kind/speaker/text/delivery/start/end 七字段，严格按题目规范），样式统一为画面底部居中的【说话者】文本；全部声音用 Web Audio 程序化合成：车床啸叫（带通锯齿+噪声）、呼吸声（带通噪声包络）、心跳、真空闷震（低通噪声脉冲）、无线电嘈杂声、警报、推进器，尊重真空不传声的物理。",
+        "en": "One-shot in the Wenxin web app on Work Task mode, no code edits. A voxel 3D short film built with React + three.js, adapting the Zhang Beihai old-astronauts assassination sequence from Liu Cixin's The Dark Forest (The Three-Body Problem II). Runtime approximately 3:20, well within the 6-minute hard cap. Everything is voxel/procedural (no external assets or textures): blocky astronauts (a gold-tinted visor distinguishes Zhang Beihai from the three targets), a procedural Earth (sphere with random green continent patches and translucent cloud shells), a 1500-point starfield, and a basement workshop with a lathe, workbench, meteorite, and bullets. Fourteen shots are laid out on a timeline with per-shot camera position/FOV/look-at interpolation covering six acts — meteorite machining on the lathe, EVA, aiming, three shots in vacuum (no external sound; only suit-conducted low-frequency thumps and muzzle flashes), bodies drifting away, and a thruster turn. The subtitle manifest contains 21 VO cues, each with the seven required fields (id/kind/speaker/text/delivery/start/end) and rendered in the required bottom-centered 【Speaker】text style. All sound is synthesized at runtime with Web Audio: lathe whine (band-passed saw + noise), breath (band-passed noise envelopes), heartbeat, in-suit thumps (low-pass filtered noise bursts), radio hash, alarm, and thruster — respecting the physics that gunshots do not propagate through vacuum."
+      },
+      "contributor": "Xtzdd"
+    }
+  }
+}
